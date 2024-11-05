@@ -1,0 +1,181 @@
+.app-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: #f4f4f4;
+  padding: 10px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.config-panel {
+  width: 300px;
+  background-color: #f8f9fa;
+  padding: 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  border-left: 1px solid #e9ecef;
+}
+
+.config-panel h2 {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.config-panel label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.config-panel input[type="text"],
+.config-panel .p-dropdown,
+.config-panel .p-colorpicker {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.config-panel .p-slider {
+  margin-bottom: 1rem;
+}
+
+.config-panel .p-inputnumber {
+  width: 80px;
+}
+
+.config-panel .p-button {
+  margin-top: 1rem;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+.main-content input[type="file"] {
+  margin-bottom: 1rem;
+}
+
+.video-player-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  width: 100%;
+  padding: 20px;
+}
+
+.video-canvas {
+  display: block;
+  background-color: black;
+  border: 1px solid #ccc;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.controls button {
+  background-color: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #fff;
+  padding: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.timeline-container {
+  position: relative;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.timeline {
+  display: flex;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.thumbnail {
+  height: auto;
+  cursor: pointer;
+  border: 2px solid transparent;
+  flex-grow: 1;
+  object-fit: cover;
+}
+
+.thumbnail:hover {
+  border: 2px solid rgb(255, 157, 0);
+}
+
+.timeline-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(255, 157, 0, 0.4);
+  border-right: 2px solid rgb(255, 157, 0);
+  pointer-events: none;
+}
+
+.hidden {
+  display: none;
+}
+
+.reset-button:hover {
+  background-color: #ff3333;
+}
+
+.reset-button:active {
+  background-color: #e60000;
+}
+
+.color-segmentation-params {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+}
+
+.color-segmentation-params h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.color-segmentation-params label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.color-segmentation-params input[type='color'] {
+  margin-left: 10px;
+  width: 50px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+.color-segmentation-params input[type='range'] {
+  margin-left: 10px;
+  width: 100px;
+}
+
+.color-segmentation-params span {
+  margin-left: 10px;
+  font-weight: bold;
+}
