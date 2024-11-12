@@ -84,41 +84,55 @@ export function VideoPlayer({
       }
 
       console.log('Setting up video with URL:', mediaUrl);
-      video.src = mediaUrl;
-      video.load();
+
+      const handleLoadedMetadata = () => {
+        console.log('Video loadedmetadata event fired');
+        const originalWidth = video.videoWidth;
+        const originalHeight = video.videoHeight;
+        console.log('Original video dimensions:', originalWidth, 'x', originalHeight);
+
+        const aspectRatio = originalWidth / originalHeight;
+        let scaledWidth = originalWidth;
+        let scaledHeight = originalHeight;
+
+        if (scaledWidth > MAX_WIDTH) {
+          scaledWidth = MAX_WIDTH;
+          scaledHeight = Math.floor(scaledWidth / aspectRatio);
+        }
+
+        if (scaledHeight > MAX_HEIGHT) {
+          scaledHeight = MAX_HEIGHT;
+          scaledWidth = Math.floor(scaledHeight * aspectRatio);
+        }
+
+        const dimensions = {
+          width: Math.floor(scaledWidth),
+          height: Math.floor(scaledHeight),
+        };
+
+        setVideoDimensions(dimensions);
+        setCanvasSize(dimensions);
+        onDimensionsChange(dimensions);
+      };
 
       const handleLoaded = () => {
         console.log('Video loadeddata event fired');
-        console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
         setIsMediaLoaded(true);
         setIsVideoReady(true);
       };
 
-      const handleError = (e: ErrorEvent) => {
-        console.error('Video loading error:', e);
-      };
-
-      const handleLoadStart = () => {
-        console.log('Video load started');
-      };
-
-      const handleCanPlay = () => {
-        console.log('Video can play');
-      };
-
-      video.addEventListener('loadstart', handleLoadStart);
-      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
       video.addEventListener('loadeddata', handleLoaded);
-      video.addEventListener('error', handleError);
+
+      video.src = mediaUrl;
+      video.load();
 
       return () => {
-        video.removeEventListener('loadstart', handleLoadStart);
-        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('loadeddata', handleLoaded);
-        video.removeEventListener('error', handleError);
       };
     }
-  }, [mediaUrl, mediaType]);
+  }, [mediaUrl, mediaType, onDimensionsChange]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -196,15 +210,14 @@ export function VideoPlayer({
       console.log('Canvas or context not available');
       return;
     }
-    if (!isVideoReady) {
-      console.log('Video not ready for canvas rendering');
+    if (!isVideoReady || canvasSize.width === 0 || canvasSize.height === 0) {
+      console.log('Video or canvas dimensions not ready');
       return;
     }
 
-    console.log('Starting canvas render loop');
-    console.log('Current media type:', mediaType);
-    console.log('Is video ready:', isVideoReady);
-    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+    console.log('Starting canvas render loop with dimensions:', canvasSize);
+    canvas.width = canvasSize.width;
+    canvas.height = canvasSize.height;
 
     const renderFrame = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -238,7 +251,7 @@ export function VideoPlayer({
     };
 
     renderFrame();
-  }, [markers, isDrawing, currentRect, videoRef, isVideoReady, selectedMarkerId, mediaType, image]);
+  }, [markers, isDrawing, currentRect, videoRef, isVideoReady, selectedMarkerId, mediaType, image, canvasSize]);
 
   useEffect(() => {
     const video = videoRef.current;
