@@ -7,9 +7,10 @@ interface SidebarProps {
   selectedMarkerId: string | null;
   updateMarker: (updatedMarker: Marker) => void;
   resetMarkers: () => void;
+  resetAll: () => void;
 }
 
-function Sidebar({ markers, selectMarker, selectedMarkerId, updateMarker, resetMarkers }: SidebarProps) {
+function Sidebar({ markers, selectMarker, selectedMarkerId, updateMarker, resetMarkers, resetAll }: SidebarProps) {
   const handleMarkerClick = (marker: Marker) => {
     selectMarker(marker.id);
     updateMarker({ ...marker, lastSelected: new Date().toISOString() } as Marker);
@@ -42,21 +43,36 @@ function Sidebar({ markers, selectMarker, selectedMarkerId, updateMarker, resetM
           </li>
         ))}
       </ul>
-      <button
-        onClick={resetMarkers}
-        className="reset-button"
-        style={{
-          marginTop: '20px',
-          padding: '10px',
-          backgroundColor: '#ff4d4d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
-        Resetar Marcadores
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={resetMarkers}
+          className="reset-button w-full"
+          style={{
+            padding: '10px',
+            backgroundColor: '#ff4d4d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          Resetar Marcadores
+        </button>
+        <button
+          onClick={resetAll}
+          className="reset-button w-full"
+          style={{
+            padding: '10px',
+            backgroundColor: '#dc2626',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          Resetar Tudo
+        </button>
+      </div>
     </aside>
   );
 }

@@ -8,6 +8,7 @@ import '../styles/global.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
+import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 
 interface VideoDimensions {
   width: number;
@@ -62,8 +63,25 @@ const App: React.FC = () => {
 
   const [videoDimensions, setVideoDimensions] = useState<VideoDimensions>({ width: 0, height: 0 });
 
-  const [mediaType, setMediaType] = useState<'video' | 'image' | null>(null);
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(() => {
+    const savedMedia = localStorage.getItem('mediaUrl');
+    if (savedMedia) {
+      try {
+        return savedMedia;
+      } catch (error) {
+        console.error('Error loading saved media URL:', error);
+      }
+    }
+    return null;
+  });
+
+  const [mediaType, setMediaType] = useState<'video' | 'image' | null>(() => {
+    const savedType = localStorage.getItem('mediaType');
+    if (savedType === 'video' || savedType === 'image') {
+      return savedType;
+    }
+    return null;
+  });
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -259,39 +277,89 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setMediaUrl(url);
+      try {
+        // Save file to IndexedDB
+        await saveMedia('currentMedia', file);
 
-      if (file.type.startsWith('video/')) {
-        console.log('Video file uploaded:', file.name);
-        setMediaType('video');
-      } else if (file.type.startsWith('image/')) {
-        console.log('Image file uploaded:', file.name);
-        setMediaType('image');
-      } else {
-        console.error('Unsupported file type:', file.type);
-        alert('Unsupported file type. Please upload a video or image file.');
-        return;
-      }
+        const url = URL.createObjectURL(file);
+        setMediaUrl(url);
 
-      // Update only the general marker's dimensions when loading a new file
-      setMarkers((prevMarkers) => {
-        const generalMarker = prevMarkers.find((m) => m.isGeneral);
-        if (generalMarker) {
-          const updatedGeneralMarker = {
-            ...generalMarker,
-            width: 0, // This will be updated when the video/image dimensions are known
-            height: 0, // This will be updated when the video/image dimensions are known
-          };
-          return [updatedGeneralMarker, ...prevMarkers.filter((m) => !m.isGeneral)];
+        if (file.type.startsWith('video/')) {
+          setMediaType('video');
+          localStorage.setItem('mediaType', 'video');
+        } else if (file.type.startsWith('image/')) {
+          setMediaType('image');
+          localStorage.setItem('mediaType', 'image');
         }
-        return prevMarkers;
-      });
+
+        // Update markers as before
+        setMarkers((prevMarkers) => {
+          const generalMarker = prevMarkers.find((m) => m.isGeneral);
+          if (generalMarker) {
+            const updatedGeneralMarker = {
+              ...generalMarker,
+              width: 0,
+              height: 0,
+            };
+            return [updatedGeneralMarker, ...prevMarkers.filter((m) => !m.isGeneral)];
+          }
+          return prevMarkers;
+        });
+      } catch (error) {
+        console.error('Error saving media:', error);
+      }
     }
   };
+
+  useEffect(() => {
+    const loadSavedMedia = async () => {
+      try {
+        const savedType = localStorage.getItem('mediaType');
+        if (savedType) {
+          const savedMedia = await getMedia('currentMedia');
+          if (savedMedia) {
+            const url = URL.createObjectURL(savedMedia);
+            setMediaUrl(url);
+            setMediaType(savedType as 'video' | 'image');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved media:', error);
+      }
+    };
+
+    loadSavedMedia();
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (mediaUrl) {
+        URL.revokeObjectURL(mediaUrl);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (mediaUrl) {
+        URL.revokeObjectURL(mediaUrl);
+      }
+    };
+  }, [mediaUrl]);
+
+  const resetAll = useCallback(async () => {
+    if (mediaUrl) {
+      URL.revokeObjectURL(mediaUrl);
+    }
+    setMediaUrl(null);
+    setMediaType(null);
+    localStorage.removeItem('mediaType');
+    await deleteMedia('currentMedia');
+    resetMarkers();
+  }, [resetMarkers, mediaUrl]);
 
   return (
     <div className="app-container">
@@ -301,6 +369,7 @@ const App: React.FC = () => {
         selectedMarkerId={selectedMarkerId}
         updateMarker={updateMarker}
         resetMarkers={resetMarkers}
+        resetAll={resetAll}
       />
       <div className="main-content">
         <label htmlFor="media-upload" className="block mb-2">
