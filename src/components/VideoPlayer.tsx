@@ -426,9 +426,9 @@ export function VideoPlayer({
     const video = videoRef.current!;
     if (!fps) return;
 
-    // Obtém o tempo atual do frame
-    const currentFrame = Math.floor(video.currentTime * fps);
-    // Calcula o tempo do próximo frame
+    // Get the current frame using ceil to ensure we move to the next frame
+    const currentFrame = Math.ceil(video.currentTime * fps);
+    // Calculate the next frame time
     const nextFrameTime = (currentFrame + 1) / fps;
 
     if (nextFrameTime <= video.duration) {
