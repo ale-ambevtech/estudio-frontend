@@ -281,19 +281,27 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (file) {
       try {
+        console.log('File selected:', file.name, 'Type:', file.type);
+
         // Save file to IndexedDB
         await saveMedia('currentMedia', file);
+        console.log('File saved to IndexedDB');
 
         const url = URL.createObjectURL(file);
-        setMediaUrl(url);
+        console.log('Created object URL:', url);
 
         if (file.type.startsWith('video/')) {
+          console.log('Setting media type to video');
           setMediaType('video');
           localStorage.setItem('mediaType', 'video');
         } else if (file.type.startsWith('image/')) {
+          console.log('Setting media type to image');
           setMediaType('image');
           localStorage.setItem('mediaType', 'image');
         }
+
+        setMediaUrl(url);
+        console.log('Media URL set');
 
         // Update markers as before
         setMarkers((prevMarkers) => {
@@ -309,7 +317,7 @@ const App: React.FC = () => {
           return prevMarkers;
         });
       } catch (error) {
-        console.error('Error saving media:', error);
+        console.error('Error during file upload:', error);
       }
     }
   };

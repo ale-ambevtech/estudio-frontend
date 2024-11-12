@@ -1,4 +1,3 @@
-import { FC } from 'react';
 import { Marker } from '../types';
 
 interface SidebarProps {

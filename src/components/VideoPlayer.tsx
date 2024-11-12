@@ -53,6 +53,7 @@ export function VideoPlayer({
   const [videoTime, setVideoTime] = useState(0);
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [isMediaLoaded, setIsMediaLoaded] = useState(false);
 
   const calculateFps = useCallback(() => {
     const video = videoRef.current as FirefoxVideoElement;
@@ -70,14 +71,67 @@ export function VideoPlayer({
   }, [videoRef]);
 
   useEffect(() => {
+    if (!mediaUrl) {
+      console.log('No mediaUrl provided');
+      return;
+    }
+
+    if (mediaType === 'video') {
+      const video = videoRef.current;
+      if (!video) {
+        console.log('Video ref not available');
+        return;
+      }
+
+      console.log('Setting up video with URL:', mediaUrl);
+      video.src = mediaUrl;
+      video.load();
+
+      const handleLoaded = () => {
+        console.log('Video loadeddata event fired');
+        console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+        setIsMediaLoaded(true);
+        setIsVideoReady(true);
+      };
+
+      const handleError = (e: ErrorEvent) => {
+        console.error('Video loading error:', e);
+      };
+
+      const handleLoadStart = () => {
+        console.log('Video load started');
+      };
+
+      const handleCanPlay = () => {
+        console.log('Video can play');
+      };
+
+      video.addEventListener('loadstart', handleLoadStart);
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('loadeddata', handleLoaded);
+      video.addEventListener('error', handleError);
+
+      return () => {
+        video.removeEventListener('loadstart', handleLoadStart);
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('loadeddata', handleLoaded);
+        video.removeEventListener('error', handleError);
+      };
+    }
+  }, [mediaUrl, mediaType]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
+      console.log('Video loadedmetadata event fired');
       calculateFps();
 
       const originalWidth = video.videoWidth;
       const originalHeight = video.videoHeight;
+      console.log('Original video dimensions:', originalWidth, 'x', originalHeight);
+
       const aspectRatio = originalWidth / originalHeight;
 
       let scaledWidth = originalWidth;
@@ -138,8 +192,19 @@ export function VideoPlayer({
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-    if (!isVideoReady) return;
+    if (!canvas || !ctx) {
+      console.log('Canvas or context not available');
+      return;
+    }
+    if (!isVideoReady) {
+      console.log('Video not ready for canvas rendering');
+      return;
+    }
+
+    console.log('Starting canvas render loop');
+    console.log('Current media type:', mediaType);
+    console.log('Is video ready:', isVideoReady);
+    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
 
     const renderFrame = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -386,7 +451,7 @@ export function VideoPlayer({
         height={canvasSize.height}
       />
 
-      {mediaType === 'video' && (
+      {mediaType === 'video' && isMediaLoaded && (
         <div className="controls">
           <button type="button" onClick={handleSkipToStart} aria-label="Ir para o início">
             <FaFastBackward />
@@ -406,7 +471,7 @@ export function VideoPlayer({
         </div>
       )}
 
-      {mediaType === 'video' && mediaUrl && <video ref={videoRef} src={mediaUrl} className="hidden" />}
+      {mediaType === 'video' && mediaUrl && <video ref={videoRef} className="hidden" preload="auto" />}
     </div>
   );
 }
