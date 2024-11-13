@@ -402,7 +402,7 @@ const App: React.FC = () => {
   const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-800">
       <div className="container mx-auto p-4 grid grid-cols-[280px_1fr_280px] gap-6">
         {/* Sidebar Esquerda */}
         <Sidebar
@@ -448,7 +448,7 @@ const App: React.FC = () => {
 
             {/* Timeline e Controles */}
             {mediaType === 'video' && (
-              <div className="space-y-4">
+              <div className="w-full">
                 <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
                 <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} />
               </div>

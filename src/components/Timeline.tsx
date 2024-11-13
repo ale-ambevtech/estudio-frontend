@@ -92,7 +92,7 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
   };
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-[640px] space-y-2 m-auto">
       {/* Container dos thumbnails */}
       <div className="relative w-full h-[60px] bg-gray-100 rounded-lg overflow-hidden">
         <div className="flex h-full">

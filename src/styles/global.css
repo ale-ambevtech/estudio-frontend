@@ -109,8 +109,7 @@
 
 .timeline {
   display: flex;
-  width: 100%;
-
+  width: 640px;
 }
 
 .thumbnail {
