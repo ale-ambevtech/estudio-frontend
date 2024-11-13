@@ -398,50 +398,72 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Adicionar este seletor para obter o marcador selecionado
+  const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
+
   return (
-    <div className="app-container">
-      <Sidebar
-        markers={markers}
-        selectMarker={selectMarker}
-        selectedMarkerId={selectedMarkerId}
-        updateMarker={updateMarker}
-        resetMarkers={resetMarkers}
-        resetAll={resetAll}
-      />
-      <div className="main-content">
-        <label htmlFor="media-upload" className="block mb-2">
-          Carregar Vídeo ou Imagem:
-        </label>
-        <input id="media-upload" type="file" accept="video/*,image/*" onChange={handleFileUpload} className="mb-4" />
-        {mediaUrl && (
-          <>
-            <VideoPlayer
-              markers={markers}
-              addMarker={addMarker}
-              selectedMarkerId={selectedMarkerId}
-              videoRef={videoRef}
-              onDimensionsChange={handleVideoDimensionsChange}
-              selectMarker={selectMarker}
-              mediaType={mediaType}
-              mediaUrl={mediaUrl}
-            />
-          </>
-        )}
-        {mediaType === 'video' && (
-          <>
-            <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
-            <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} />
-          </>
-        )}
-        <button onClick={exportRecipe} className="button-export">
-          Exportar Receita
-        </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-4 grid grid-cols-[280px_1fr_280px] gap-6">
+        {/* Sidebar Esquerda */}
+        <Sidebar
+          markers={markers}
+          selectMarker={selectMarker}
+          selectedMarkerId={selectedMarkerId}
+          updateMarker={updateMarker}
+          resetMarkers={resetMarkers}
+          resetAll={resetAll}
+          className="bg-white rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+        />
+
+        {/* Área Principal */}
+        <main className="bg-white rounded-lg shadow-sm p-6 flex flex-col gap-4">
+          <div className="space-y-4">
+            {/* Input de arquivo */}
+            <div className="mb-6">
+              <label htmlFor="media-upload" className="block text-sm font-medium mb-2">
+                Carregar Vídeo ou Imagem:
+              </label>
+              <input
+                type="file"
+                id="media-upload"
+                accept="video/*,image/*"
+                onChange={handleFileUpload}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+
+            {/* Player de Vídeo/Imagem */}
+            <div className="relative">
+              <VideoPlayer
+                markers={markers}
+                addMarker={addMarker}
+                selectedMarkerId={selectedMarkerId}
+                videoRef={videoRef}
+                onDimensionsChange={handleVideoDimensionsChange}
+                selectMarker={selectMarker}
+                mediaType={mediaType}
+                mediaUrl={mediaUrl}
+              />
+            </div>
+
+            {/* Timeline e Controles */}
+            {mediaType === 'video' && (
+              <div className="space-y-4">
+                <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
+                <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} />
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Sidebar Direita */}
+        <ConfigPanel
+          marker={selectedMarker}
+          updateMarker={updateMarker}
+          deleteMarker={deleteMarker}
+          className="bg-white rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+        />
       </div>
-      <ConfigPanel
-        marker={markers.find((m) => m.id === selectedMarkerId) || null}
-        updateMarker={updateMarker}
-        deleteMarker={deleteMarker}
-      />
     </div>
   );
 };

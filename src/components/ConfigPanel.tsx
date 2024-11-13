@@ -9,9 +9,10 @@ export interface ConfigPanelProps {
   marker: Marker | null;
   updateMarker: (updatedMarker: Marker) => void;
   deleteMarker: (id: string) => void;
+  className?: string;
 }
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteMarker }) => {
+const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteMarker, className }) => {
   if (!marker) {
     return (
       <div className="config-panel">
@@ -21,56 +22,18 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
   }
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!marker.isGeneral) {
-      updateMarker({ ...marker, name: e.target.value });
-    }
+    updateMarker({ ...marker, name: e.target.value });
   };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateMarker({ ...marker, color: e.target.value });
   };
 
-  const handleFunctionChange = (e: { value: string }) => {
-    const newFunction = e.value as
-      | 'colorSegmentation'
-      | 'detectShapes'
-      | 'templateMatching'
-      | 'detectPeople'
-      | undefined;
-    let newParams = marker.opencvParams || {};
-
-    if (newFunction === 'colorSegmentation') {
-      newParams = {
-        ...newParams,
-        lowerColor: '#000000',
-        upperColor: '#FFFFFF',
-        tolerance: 20,
-        minArea: 100,
-        maxArea: 10000,
-      };
-    } else if (newFunction === 'detectShapes') {
-      newParams = {
-        ...newParams,
-        shapes: ['circle'],
-        minArea: 100,
-        maxArea: 10000,
-        shapeTolerance: 0.02,
-      };
-    } else if (newFunction === 'templateMatching') {
-      newParams = {
-        ...newParams,
-        templateImage: undefined,
-        threshold: 0.8,
-      };
-    } else if (newFunction === 'detectPeople') {
-      newParams = {
-        ...newParams,
-        minArea: 1000,
-        maxArea: 100000,
-      };
-    }
-
-    updateMarker({ ...marker, opencvFunction: newFunction, opencvParams: newParams });
+  const handleFunctionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    updateMarker({
+      ...marker,
+      opencvFunction: e.target.value as Marker['opencvFunction'],
+    });
   };
 
   const handleDelete = () => {
@@ -421,11 +384,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
   };
 
   return (
-    <div className="config-panel p-4 space-y-4">
-      <h2 className="text-xl font-bold mb-4">Configurações para {marker.isGeneral ? 'Quadro Geral' : 'Marcador'}</h2>
+    <div className={`config-panel p-4 space-y-4 ${className}`}>
+      <h2 className="text-lg font-semibold mb-4">
+        Configurações para {marker.isGeneral ? 'Quadro Geral' : 'Marcador'}
+      </h2>
+
       <div className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="markerName" className="block text-sm font-medium">
+          <label htmlFor="markerName" className="block text-sm font-medium text-gray-700">
             Nome:
           </label>
           <input
@@ -434,38 +400,42 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             value={marker.name || ''}
             onChange={handleNameChange}
             disabled={marker.isGeneral}
-            className={`w-full p-2 border rounded ${marker.isGeneral ? 'bg-gray-100' : ''}`}
+            className="w-full p-2 border rounded-md disabled:bg-gray-100"
+            aria-label="Nome do marcador"
           />
         </div>
+
         <div className="space-y-2">
-          <label htmlFor="markerColor" className="block text-sm font-medium">
+          <label htmlFor="markerColor" className="block text-sm font-medium text-gray-700">
             Cor:
           </label>
           <input
-            type="color"
             id="markerColor"
+            type="color"
             value={marker.color}
             onChange={handleColorChange}
-            className="w-full h-10"
+            className="w-full h-10 rounded-md"
+            aria-label="Cor do marcador"
           />
         </div>
+
         <div className="space-y-2">
-          <label htmlFor="opencvFunction" className="block text-sm font-medium">
+          <label htmlFor="opencvFunction" className="block text-sm font-medium text-gray-700">
             Função OpenCV:
           </label>
-          <Dropdown
+          <select
             id="opencvFunction"
             value={marker.opencvFunction || ''}
-            options={[
-              { label: 'Selecionar', value: '' },
-              { label: 'Detecção de Formas', value: 'detectShapes' },
-              { label: 'Segmentação de Cor', value: 'colorSegmentation' },
-              { label: 'Correspondência de Modelo', value: 'templateMatching' },
-              { label: 'Detecção de Pessoas', value: 'detectPeople' },
-            ]}
             onChange={handleFunctionChange}
-            className="w-full"
-          />
+            className="w-full p-2 border rounded-md"
+            aria-label="Função OpenCV"
+          >
+            <option value="">Selecionar</option>
+            <option value="detectShapes">Detecção de Formas</option>
+            <option value="colorSegmentation">Segmentação de Cor</option>
+            <option value="templateMatching">Correspondência de Modelo</option>
+            <option value="detectPeople">Detecção de Pessoas</option>
+          </select>
         </div>
       </div>
 

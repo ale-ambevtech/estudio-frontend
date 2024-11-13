@@ -13,34 +13,42 @@ export function VideoControls({ videoRef, fps, isPlaying }: VideoControlsProps) 
     fps,
   });
 
-  const handleSkipToStart = () => {
-    const video = videoRef.current!;
-    video.currentTime = 0;
-    video.pause();
-  };
-
-  const handleSkipToEnd = () => {
-    const video = videoRef.current!;
-    video.currentTime = video.duration;
-    video.pause();
-  };
-
   return (
-    <div className="controls">
-      <button type="button" onClick={handleSkipToStart} aria-label="Ir para o início">
-        <FaFastBackward />
+    <div className="flex justify-center gap-2 p-2">
+      <button
+        onClick={() => (videoRef.current!.currentTime = 0)}
+        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+        aria-label="Ir para o início"
+      >
+        <FaFastBackward className="w-4 h-4" />
       </button>
-      <button type="button" onClick={handleStepBackward} aria-label="Retroceder um quadro">
-        <FaStepBackward />
+      <button
+        onClick={handleStepBackward}
+        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+        aria-label="Retroceder um quadro"
+      >
+        <FaStepBackward className="w-4 h-4" />
       </button>
-      <button type="button" onClick={handlePlayPause} aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}>
-        {isPlaying ? <FaPause /> : <FaPlay />}
+      <button
+        onClick={handlePlayPause}
+        className="p-3 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
+        aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
+      >
+        {isPlaying ? <FaPause className="w-5 h-5" /> : <FaPlay className="w-5 h-5" />}
       </button>
-      <button type="button" onClick={handleStepForward} aria-label="Avançar um quadro">
-        <FaStepForward />
+      <button
+        onClick={handleStepForward}
+        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+        aria-label="Avançar um quadro"
+      >
+        <FaStepForward className="w-4 h-4" />
       </button>
-      <button type="button" onClick={handleSkipToEnd} aria-label="Ir para o final">
-        <FaFastForward />
+      <button
+        onClick={() => (videoRef.current!.currentTime = videoRef.current!.duration)}
+        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+        aria-label="Ir para o final"
+      >
+        <FaFastForward className="w-4 h-4" />
       </button>
     </div>
   );

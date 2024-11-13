@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { VIDEO } from '../constants/dimensions';
 import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
-import { useVideoControls } from '../hooks/useVideoControls';
 
 interface VideoPlayerProps {
   markers: Marker[];

@@ -85,26 +85,34 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
   };
 
   const handleThumbnailClick = (index: number) => {
-    const time = (index / thumbnails.length) * duration;
-    onSeek(time);
+    const video = videoRef.current!;
+    const timeToSeek = (duration / thumbnails.length) * index;
+    video.currentTime = timeToSeek;
+    onSeek(timeToSeek);
   };
 
-  const progressPercent = (currentTime / duration) * 100;
-
   return (
-    <div className="timeline-container">
-      <div className="timeline">
-        {thumbnails.map((thumb, index) => (
-          <img
-            key={index}
-            src={thumb}
-            alt={`Thumbnail ${index}`}
-            onClick={() => handleThumbnailClick(index)}
-            className="thumbnail"
-          />
-        ))}
+    <div className="w-full space-y-2">
+      {/* Container dos thumbnails */}
+      <div className="relative w-full h-[60px] bg-gray-100 rounded-lg overflow-hidden">
+        <div className="flex h-full">
+          {thumbnails.map((thumbnail, index) => (
+            <div key={index} className="relative flex-1 h-full min-w-0" onClick={() => handleThumbnailClick(index)}>
+              <img
+                src={thumbnail}
+                alt={`Thumbnail ${index + 1}`}
+                className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Indicador de progresso */}
+        <div
+          className="absolute top-0 left-0 h-full bg-blue-500/20 border-r-2 border-blue-500 pointer-events-none transition-all duration-100"
+          style={{ width: `${(currentTime / duration) * 100}%` }}
+        />
       </div>
-      <div className="timeline-progress" style={{ width: `${progressPercent}%` }}></div>
     </div>
   );
 };

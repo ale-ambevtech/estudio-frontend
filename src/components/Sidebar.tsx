@@ -7,9 +7,18 @@ interface SidebarProps {
   updateMarker: (updatedMarker: Marker) => void;
   resetMarkers: () => void;
   resetAll: () => void;
+  className?: string;
 }
 
-function Sidebar({ markers, selectMarker, selectedMarkerId, updateMarker, resetMarkers, resetAll }: SidebarProps) {
+function Sidebar({
+  markers,
+  selectMarker,
+  selectedMarkerId,
+  updateMarker,
+  resetMarkers,
+  resetAll,
+  className,
+}: SidebarProps) {
   const handleMarkerClick = (marker: Marker) => {
     selectMarker(marker.id);
     updateMarker({ ...marker, lastSelected: new Date().toISOString() } as Marker);
@@ -17,57 +26,36 @@ function Sidebar({ markers, selectMarker, selectedMarkerId, updateMarker, resetM
   };
 
   return (
-    <aside className="sidebar">
-      <h2>Marcadores</h2>
-      <ul>
+    <aside className={className}>
+      <h2 className="text-lg font-semibold mb-4">Marcadores</h2>
+      <ul className="space-y-2 mb-4">
         {markers.map((marker) => (
           <li
             key={marker.id}
             onClick={() => handleMarkerClick(marker)}
-            style={{
-              backgroundColor: marker.id === selectedMarkerId ? marker.color : 'transparent',
-              fontWeight: marker.isGeneral ? 'bold' : 'normal',
-              color: marker.isGeneral ? '#000' : 'inherit',
-            }}
+            className={`
+              flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors
+              ${marker.id === selectedMarkerId ? 'bg-gray-100' : 'hover:bg-gray-50'}
+            `}
           >
-            <span
-              className="marker-color"
-              style={{
-                backgroundColor: marker.color,
-                border: marker.isGeneral ? '1px solid #000' : 'none',
-              }}
-            />
-            {marker.name || 'Marker'}
-            {marker.isGeneral && ' (Geral)'}
+            <span className="w-4 h-4 rounded-full" style={{ backgroundColor: marker.color }} />
+            <span className={marker.isGeneral ? 'font-semibold' : ''}>
+              {marker.name || 'Marker'}
+              {marker.isGeneral && ' (Geral)'}
+            </span>
           </li>
         ))}
       </ul>
       <div className="space-y-2">
         <button
           onClick={resetMarkers}
-          className="reset-button w-full"
-          style={{
-            padding: '10px',
-            backgroundColor: '#ff4d4d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
+          className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
         >
           Resetar Marcadores
         </button>
         <button
           onClick={resetAll}
-          className="reset-button w-full"
-          style={{
-            padding: '10px',
-            backgroundColor: '#dc2626',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
+          className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
         >
           Resetar Tudo
         </button>
