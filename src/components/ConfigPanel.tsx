@@ -425,19 +425,26 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
           <label htmlFor="opencvFunction" className="block text-sm font-medium text-gray-700">
             Função OpenCV:
           </label>
-          <select
-            id="opencvFunction"
-            value={marker.opencvFunction || ''}
-            onChange={handleFunctionChange}
-            className="w-full p-2 rounded-md"
-            aria-label="Função OpenCV"
-          >
-            <option value="">Selecionar</option>
-            <option value="detectShapes">Detecção de Formas</option>
-            <option value="colorSegmentation">Segmentação de Cor</option>
-            <option value="templateMatching">Correspondência de Modelo</option>
-            <option value="detectPeople">Detecção de Pessoas</option>
-          </select>
+          <div className="relative">
+            <select
+              id="opencvFunction"
+              value={marker.opencvFunction || ''}
+              onChange={handleFunctionChange}
+              className="w-full p-2 rounded-md border border-gray-300 bg-white appearance-none cursor-pointer pr-8 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
+              aria-label="Função OpenCV"
+            >
+              <option value="">Selecionar</option>
+              <option value="detectShapes">Detecção de Formas</option>
+              <option value="colorSegmentation">Segmentação de Cor</option>
+              <option value="templateMatching">Correspondência de Modelo</option>
+              <option value="detectPeople">Detecção de Pessoas</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+              <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
 
