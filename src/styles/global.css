@@ -56,6 +56,7 @@
   display: flex;
   flex-direction: column;
   padding: 10px;
+  align-items: center;
 }
 
 .main-content input[type="file"] {
@@ -99,22 +100,24 @@
 
 .timeline-container {
   position: relative;
-  width: 100%;
+  width: 640px;
   margin-top: 10px;
 }
 
 .timeline {
   display: flex;
-  overflow-x: hidden;
   width: 100%;
+  gap: 2px;
 }
 
 .thumbnail {
   height: auto;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
   border: 2px solid transparent;
-  flex-grow: 1;
-  object-fit: cover;
+  object-fit: contain;
+  background-color: black;
 }
 
 .thumbnail:hover {
