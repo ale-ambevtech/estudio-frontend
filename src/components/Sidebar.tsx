@@ -34,8 +34,8 @@ function Sidebar({
             key={marker.id}
             onClick={() => handleMarkerClick(marker)}
             className={`
-              flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors
-              ${marker.id === selectedMarkerId ? 'bg-gray-100' : 'hover:bg-gray-50'}
+              flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all
+              ${marker.id === selectedMarkerId ? 'bg-slate-100 ring-2 ring-slate-500 shadow-sm' : 'hover:bg-slate-50'}
             `}
           >
             <span className="w-4 h-4 rounded-full" style={{ backgroundColor: marker.color }} />
