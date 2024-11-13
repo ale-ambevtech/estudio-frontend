@@ -1,14 +1,11 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Marker } from '../types';
 import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaFastForward, FaFastBackward } from 'react-icons/fa';
 import { v4 as uuidv4 } from 'uuid';
-
-interface FirefoxVideoElement extends HTMLVideoElement {
-  mozPresentedFrames?: number;
-  mozPaintedFrames?: number;
-  mozFrameDelay?: number;
-  webkitDecodedFrameCount?: number;
-}
+import { VIDEO } from '../constants/dimensions';
+import { MARKER_COLORS } from '../constants/colors';
+import { calculateScaledDimensions, calculateFps } from '../utils/video';
+import { useVideoControls } from '../hooks/useVideoControls';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -20,9 +17,6 @@ interface VideoPlayerProps {
   mediaType: 'video' | 'image' | null;
   mediaUrl: string | null;
 }
-
-const MAX_WIDTH = 640;
-const MAX_HEIGHT = 480;
 
 export function VideoPlayer({
   markers,
@@ -50,88 +44,65 @@ export function VideoPlayer({
   const [markerCount, setMarkerCount] = useState(0);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [isVideoReady, setIsVideoReady] = useState(false);
-  const [videoTime, setVideoTime] = useState(0);
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isMediaLoaded, setIsMediaLoaded] = useState(false);
 
-  const calculateFps = useCallback(() => {
-    const video = videoRef.current as FirefoxVideoElement;
+  const handleFpsCalculation = useCallback(() => {
+    const video = videoRef.current;
     if (!video) return;
 
-    // Método 1: Firefox
-    if (video.mozPresentedFrames && video.mozPaintedFrames && video.mozFrameDelay) {
-      const fps = 1000 / video.mozFrameDelay;
-      setFps(fps);
-      console.log('Firefox FPS:', fps);
-      return;
-    }
-
-    // ... keep rest of FPS calculation methods
+    const newFps = calculateFps(video);
+    setFps(newFps);
+    console.log('Calculated FPS:', newFps);
   }, [videoRef]);
 
+  const { handlePlayPause, handleStepForward, handleStepBackward } = useVideoControls({
+    videoRef,
+    fps,
+  });
+
   useEffect(() => {
-    if (!mediaUrl) {
-      console.log('No mediaUrl provided');
-      return;
-    }
+    if (!mediaUrl || mediaType !== 'video') return;
 
-    if (mediaType === 'video') {
-      const video = videoRef.current;
-      if (!video) {
-        console.log('Video ref not available');
-        return;
-      }
+    const video = videoRef.current;
+    if (!video) return;
 
-      console.log('Setting up video with URL:', mediaUrl);
+    console.log('Setting up video with URL:', mediaUrl);
 
-      const handleLoadedMetadata = () => {
-        console.log('Video loadedmetadata event fired');
-        const originalWidth = video.videoWidth;
-        const originalHeight = video.videoHeight;
-        console.log('Original video dimensions:', originalWidth, 'x', originalHeight);
+    const handleLoadedMetadata = () => {
+      console.log('Video loadedmetadata event fired');
+      const { width: scaledWidth, height: scaledHeight } = calculateScaledDimensions(
+        video.videoWidth,
+        video.videoHeight
+      );
 
-        const aspectRatio = originalWidth / originalHeight;
-        let scaledWidth = originalWidth;
-        let scaledHeight = originalHeight;
-
-        if (scaledWidth > MAX_WIDTH) {
-          scaledWidth = MAX_WIDTH;
-          scaledHeight = Math.floor(scaledWidth / aspectRatio);
-        }
-
-        if (scaledHeight > MAX_HEIGHT) {
-          scaledHeight = MAX_HEIGHT;
-          scaledWidth = Math.floor(scaledHeight * aspectRatio);
-        }
-
-        const dimensions = {
-          width: Math.floor(scaledWidth),
-          height: Math.floor(scaledHeight),
-        };
-
-        setVideoDimensions(dimensions);
-        setCanvasSize(dimensions);
-        onDimensionsChange(dimensions);
+      const dimensions = {
+        width: scaledWidth,
+        height: scaledHeight,
       };
 
-      const handleLoaded = () => {
-        console.log('Video loadeddata event fired');
-        setIsMediaLoaded(true);
-        setIsVideoReady(true);
-      };
+      setVideoDimensions(dimensions);
+      setCanvasSize(dimensions);
+      onDimensionsChange(dimensions);
+    };
 
-      video.addEventListener('loadedmetadata', handleLoadedMetadata);
-      video.addEventListener('loadeddata', handleLoaded);
+    const handleLoaded = () => {
+      console.log('Video loadeddata event fired');
+      setIsMediaLoaded(true);
+      setIsVideoReady(true);
+    };
 
-      video.src = mediaUrl;
-      video.load();
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('loadeddata', handleLoaded);
 
-      return () => {
-        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        video.removeEventListener('loadeddata', handleLoaded);
-      };
-    }
+    video.src = mediaUrl;
+    video.load();
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('loadeddata', handleLoaded);
+    };
   }, [mediaUrl, mediaType, onDimensionsChange]);
 
   useEffect(() => {
@@ -140,34 +111,17 @@ export function VideoPlayer({
 
     const handleLoadedMetadata = () => {
       console.log('Video loadedmetadata event fired');
-      calculateFps();
+      handleFpsCalculation();
 
-      const originalWidth = video.videoWidth;
-      const originalHeight = video.videoHeight;
-      console.log('Original video dimensions:', originalWidth, 'x', originalHeight);
-
-      const aspectRatio = originalWidth / originalHeight;
-
-      let scaledWidth = originalWidth;
-      let scaledHeight = originalHeight;
-
-      // Redimensiona mantendo a proporção e respeitando os limites máximos
-      if (scaledWidth > MAX_WIDTH) {
-        scaledWidth = MAX_WIDTH;
-        scaledHeight = Math.floor(scaledWidth / aspectRatio);
-      }
-
-      if (scaledHeight > MAX_HEIGHT) {
-        scaledHeight = MAX_HEIGHT;
-        scaledWidth = Math.floor(scaledHeight * aspectRatio);
-      }
+      const { width: scaledWidth, height: scaledHeight } = calculateScaledDimensions(
+        video.videoWidth,
+        video.videoHeight
+      );
 
       const dimensions = {
-        width: Math.floor(scaledWidth),
-        height: Math.floor(scaledHeight),
+        width: scaledWidth,
+        height: scaledHeight,
       };
-
-      console.log('Video dimensions after scaling:', dimensions);
 
       setVideoDimensions(dimensions);
       setCanvasSize(dimensions);
@@ -177,7 +131,7 @@ export function VideoPlayer({
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     return () => video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-  }, [calculateFps, onDimensionsChange]);
+  }, [handleFpsCalculation, onDimensionsChange]);
 
   useEffect(() => {
     if (mediaType === 'image' && mediaUrl) {
@@ -186,8 +140,8 @@ export function VideoPlayer({
       img.onload = () => {
         console.log('Image loaded successfully. Dimensions:', img.width, 'x', img.height);
         const dimensions = {
-          width: Math.min(img.width, MAX_WIDTH),
-          height: Math.min(img.height, MAX_HEIGHT),
+          width: Math.min(img.width, VIDEO.MAX_WIDTH),
+          height: Math.min(img.height, VIDEO.MAX_HEIGHT),
         };
         console.log('Calculated dimensions:', dimensions);
         setVideoDimensions(dimensions);
@@ -257,21 +211,6 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    const handleTimeUpdate = () => {
-      setVideoTime(video.currentTime);
-    };
-
-    video.addEventListener('timeupdate', handleTimeUpdate);
-
-    return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-    };
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => setIsPlaying(false);
@@ -317,61 +256,9 @@ export function VideoPlayer({
     });
   };
 
-  const predefinedColors = [
-    '#00FF00', // Lime
-    '#0000FF', // Blue
-    '#FFFF00', // Yellow
-    '#FF00FF', // Magenta
-    '#00FFFF', // Cyan
-    '#FFA500', // Orange
-    '#800080', // Purple
-    '#008000', // Green
-    '#FFC0CB', // Pink
-    '#A52A2A', // Brown
-    '#808080', // Gray
-    '#FFD700', // Gold
-    '#4B0082', // Indigo
-    '#7FFF00', // Chartreuse
-    '#FF4500', // OrangeRed
-    '#1E90FF', // DodgerBlue
-    '#8B4513', // SaddleBrown
-    '#FF1493', // DeepPink
-    '#00CED1', // DarkTurquoise
-    '#8B008B', // DarkMagenta
-    '#556B2F', // DarkOliveGreen
-    '#FF6347', // Tomato
-    '#00FA9A', // MediumSpringGreen
-    '#4682B4', // SteelBlue
-    '#9932CC', // DarkOrchid
-    '#2F4F4F', // DarkSlateGray
-    '#D2691E', // Chocolate
-    '#DC143C', // Crimson
-    '#7B68EE', // MediumSlateBlue
-    '#6B8E23', // OliveDrab
-    '#48D1CC', // MediumTurquoise
-    '#C71585', // MediumVioletRed
-    '#191970', // MidnightBlue
-    '#F4A460', // SandyBrown
-    '#00BFFF', // DeepSkyBlue
-    '#CD5C5C', // IndianRed
-    '#32CD32', // LimeGreen
-    '#DAA520', // GoldenRod
-    '#8FBC8F', // DarkSeaGreen
-    '#5F9EA0', // CadetBlue
-    '#9400D3', // DarkViolet
-    '#FF69B4', // HotPink
-    '#CD853F', // Peru
-    '#708090', // SlateGray
-    '#00FF7F', // SpringGreen
-    '#4169E1', // RoyalBlue
-    '#8A2BE2', // BlueViolet
-    '#20B2AA', // LightSeaGreen
-    '#B8860B', // DarkGoldenRod
-  ];
-
   const getNextColor = useCallback(() => {
-    if (markerCount < predefinedColors.length) {
-      return predefinedColors[markerCount];
+    if (markerCount < MARKER_COLORS.length) {
+      return MARKER_COLORS[markerCount];
     }
     return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
   }, [markerCount]);
@@ -399,57 +286,16 @@ export function VideoPlayer({
     setCurrentRect(null);
   }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor]);
 
-  const handlePlayPause = () => {
-    const video = videoRef.current!;
-    if (video.paused || video.ended) {
-      video.play();
-    } else {
-      video.pause();
-    }
-  };
-
   const handleSkipToStart = () => {
     const video = videoRef.current!;
     video.currentTime = 0;
     video.pause();
-    // Position will be saved via the pause event listener in App.tsx
   };
 
   const handleSkipToEnd = () => {
     const video = videoRef.current!;
     video.currentTime = video.duration;
     video.pause();
-    // Position will be saved via the pause event listener in App.tsx
-  };
-
-  const handleStepForward = () => {
-    const video = videoRef.current!;
-    if (!fps) return;
-
-    // Get the current frame using ceil to ensure we move to the next frame
-    const currentFrame = Math.ceil(video.currentTime * fps);
-    // Calculate the next frame time
-    const nextFrameTime = (currentFrame + 1) / fps;
-
-    if (nextFrameTime <= video.duration) {
-      video.currentTime = nextFrameTime;
-      console.log(`Stepping to frame ${currentFrame + 1} (${nextFrameTime.toFixed(3)}s) at ${fps} fps`);
-    }
-  };
-
-  const handleStepBackward = () => {
-    const video = videoRef.current!;
-    if (!fps) return;
-
-    // Obtém o tempo atual do frame
-    const currentFrame = Math.ceil(video.currentTime * fps);
-    // Calcula o tempo do frame anterior
-    const previousFrameTime = (currentFrame - 1) / fps;
-
-    if (previousFrameTime >= 0) {
-      video.currentTime = previousFrameTime;
-      console.log(`Stepping to frame ${currentFrame - 1} (${previousFrameTime.toFixed(3)}s) at ${fps} fps`);
-    }
   };
 
   return (
