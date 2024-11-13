@@ -412,11 +412,11 @@ const App: React.FC = () => {
           updateMarker={updateMarker}
           resetMarkers={resetMarkers}
           resetAll={resetAll}
-          className="bg-white rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+          className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
         />
 
         {/* Área Principal */}
-        <main className="bg-white rounded-lg shadow-sm p-6 flex flex-col gap-4">
+        <main className="panel rounded-lg shadow-sm p-6 flex flex-col gap-4">
           <div className="space-y-4">
             {/* Input de arquivo */}
             <div className="mb-6">
@@ -461,7 +461,7 @@ const App: React.FC = () => {
           marker={selectedMarker}
           updateMarker={updateMarker}
           deleteMarker={deleteMarker}
-          className="bg-white rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+          className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
         />
       </div>
     </div>

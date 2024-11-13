@@ -400,7 +400,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             value={marker.name || ''}
             onChange={handleNameChange}
             disabled={marker.isGeneral}
-            className="w-full p-2 border rounded-md disabled:bg-gray-100"
+            className="w-full p-2 rounded-md disabled:bg-gray-100"
             aria-label="Nome do marcador"
           />
         </div>
@@ -427,7 +427,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             id="opencvFunction"
             value={marker.opencvFunction || ''}
             onChange={handleFunctionChange}
-            className="w-full p-2 border rounded-md"
+            className="w-full p-2 rounded-md"
             aria-label="Função OpenCV"
           >
             <option value="">Selecionar</option>

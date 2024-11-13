@@ -10,19 +10,20 @@
 
 .sidebar {
   width: 300px;
-  background-color: #f4f4f4;
   padding: 10px;
   overflow-y: auto;
   flex-shrink: 0;
 }
 
+.panel {
+  @apply bg-white backdrop-blur-sm rounded-lg shadow-md border border-slate-200/60;
+}
+
 .config-panel {
   width: 300px;
-  background-color: #f8f9fa;
   padding: 20px;
   overflow-y: auto;
   flex-shrink: 0;
-  border-left: 1px solid #e9ecef;
 }
 
 .config-panel h2 {
@@ -33,22 +34,22 @@
 
 .config-panel label {
   font-weight: 500;
-  color: #495057;
+  color: #000000;
 }
 
 .config-panel input[type="text"],
+.config-panel select,
 .config-panel .p-dropdown,
 .config-panel .p-colorpicker {
-  width: 100%;
-  margin-bottom: 0.5rem;
+  @apply w-full mb-2 border border-slate-600 rounded-md appearance-none;
+}
+
+.config-panel input[type="number"] {
+  @apply w-20 border border-slate-600 rounded-md appearance-none;
 }
 
 .config-panel .p-slider {
   margin-bottom: 1rem;
-}
-
-.config-panel .p-inputnumber {
-  width: 80px;
 }
 
 .config-panel .p-button {
@@ -148,42 +149,50 @@
 }
 
 .color-segmentation-params {
-  margin-top: 15px;
-  padding: 10px;
-  background-color: #f0f0f0;
-  border-radius: 5px;
+  @apply mt-4 p-2.5 bg-gray-100 rounded-md;
 }
 
 .color-segmentation-params h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
+  @apply mt-0 mb-2.5;
 }
 
 .color-segmentation-params label {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
+  @apply flex items-center mb-2.5;
 }
 
 .color-segmentation-params input[type='color'] {
-  margin-left: 10px;
-  width: 50px;
-  height: 30px;
-  padding: 0;
-  border: none;
-  cursor: pointer;
-}
-
-.color-segmentation-params input[type='range'] {
-  margin-left: 10px;
-  width: 100px;
-}
-
-.color-segmentation-params span {
-  margin-left: 10px;
-  font-weight: bold;
+  @apply ml-2.5 w-[50px] h-[30px] p-0 border border-slate-600 rounded-md cursor-pointer;
 }
 
 .button-export {
   margin-top: 10px;
 }
+
+/* Customização do Slider do PrimeReact */
+.p-slider {
+  @apply bg-slate-200;
+}
+
+.p-slider .p-slider-range {
+  @apply bg-slate-600;
+}
+
+.p-slider .p-slider-handle {
+  @apply border-2 border-slate-600 bg-white;
+  @apply hover:border-slate-700 hover:bg-slate-50;
+  @apply focus:border-slate-700 focus:shadow-md;
+  margin-top: -8px;
+  margin-left: -8px;
+}
+
+/* Ajuste do tamanho da trilha */
+.p-slider.p-slider-horizontal {
+  height: 4px;
+}
+
+/* Ajuste do tamanho do handle */
+.p-slider .p-slider-handle {
+  height: 16px;
+  width: 16px;
+}
+

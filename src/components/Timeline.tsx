@@ -109,7 +109,7 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
 
         {/* Indicador de progresso */}
         <div
-          className="absolute top-0 left-0 h-full bg-blue-500/20 border-r-2 border-blue-500 pointer-events-none transition-all duration-100"
+          className="absolute top-0 left-0 h-full bg-orange-700/20 border-r-2 border-yellow-500 pointer-events-none transition-all duration-100"
           style={{ width: `${(currentTime / duration) * 100}%` }}
         />
       </div>
