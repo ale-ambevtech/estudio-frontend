@@ -107,7 +107,7 @@
 .timeline {
   display: flex;
   width: 100%;
-  gap: 2px;
+
 }
 
 .thumbnail {
@@ -117,7 +117,6 @@
   cursor: pointer;
   border: 2px solid transparent;
   object-fit: contain;
-  background-color: black;
 }
 
 .thumbnail:hover {
