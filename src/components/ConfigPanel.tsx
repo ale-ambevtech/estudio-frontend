@@ -55,7 +55,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
       <div className="color-segmentation-params space-y-4">
         <h3 className="text-lg font-semibold mb-2">Parâmetros de Segmentação de Cor</h3>
         <div className="space-y-2">
-          <label htmlFor="lowerColor" className="block text-sm font-medium">
+          <label htmlFor="lowerColor" className="block text-sm font-medium text-gray-700">
             Cor Inferior:
           </label>
           <input
@@ -63,11 +63,12 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             id="lowerColor"
             value={marker.opencvParams?.lowerColor || '#000000'}
             onChange={(e) => handleParamChange('lowerColor', e.target.value)}
-            className="w-full h-10"
+            className="w-full h-10 rounded-md"
+            aria-label="Cor inferior para segmentação"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="upperColor" className="block text-sm font-medium">
+          <label htmlFor="upperColor" className="block text-sm font-medium text-gray-700">
             Cor Superior:
           </label>
           <input
@@ -75,7 +76,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             id="upperColor"
             value={marker.opencvParams?.upperColor || '#FFFFFF'}
             onChange={(e) => handleParamChange('upperColor', e.target.value)}
-            className="w-full h-10"
+            className="w-full h-10 rounded-md"
+            aria-label="Cor superior para segmentação"
           />
         </div>
         <div className="space-y-2">
