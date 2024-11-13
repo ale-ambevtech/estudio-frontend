@@ -3,7 +3,6 @@ import { Marker } from '../types';
 import { Slider } from 'primereact/slider';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
-import { Button } from 'primereact/button';
 
 export interface ConfigPanelProps {
   marker: Marker | null;
@@ -454,12 +453,12 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
       {marker.opencvFunction === 'detectPeople' && renderPeopleDetectionParams()}
 
       {!marker.isGeneral && (
-        <Button
-          label="Excluir Marcador"
-          icon="pi pi-trash"
-          className="p-button-danger w-full mt-4"
+        <button
           onClick={handleDelete}
-        />
+          className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
+        >
+          Excluir Marcador
+        </button>
       )}
     </div>
   );

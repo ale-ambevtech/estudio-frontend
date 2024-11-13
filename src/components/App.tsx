@@ -283,47 +283,20 @@ const App: React.FC = () => {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      try {
-        console.log('File selected:', file.name, 'Type:', file.type);
+    if (!file) return;
 
-        // Save file to IndexedDB
-        await saveMedia('currentMedia', file);
-        console.log('File saved to IndexedDB');
-
-        const url = URL.createObjectURL(file);
-        console.log('Created object URL:', url);
-
-        if (file.type.startsWith('video/')) {
-          console.log('Setting media type to video');
-          setMediaType('video');
-          localStorage.setItem('mediaType', 'video');
-        } else if (file.type.startsWith('image/')) {
-          console.log('Setting media type to image');
-          setMediaType('image');
-          localStorage.setItem('mediaType', 'image');
-        }
-
-        setMediaUrl(url);
-        console.log('Media URL set');
-
-        // Update markers as before
-        setMarkers((prevMarkers) => {
-          const generalMarker = prevMarkers.find((m) => m.isGeneral);
-          if (generalMarker) {
-            const updatedGeneralMarker = {
-              ...generalMarker,
-              width: 0,
-              height: 0,
-            };
-            return [updatedGeneralMarker, ...prevMarkers.filter((m) => !m.isGeneral)];
-          }
-          return prevMarkers;
-        });
-      } catch (error) {
-        console.error('Error during file upload:', error);
-      }
+    if (mediaUrl) {
+      URL.revokeObjectURL(mediaUrl);
     }
+
+    const newUrl = URL.createObjectURL(file);
+    setMediaUrl(newUrl);
+
+    const type = file.type.startsWith('video/') ? 'video' : 'image';
+    setMediaType(type);
+
+    localStorage.setItem('mediaType', type);
+    await saveMedia('currentMedia', file);
   };
 
   useEffect(() => {
@@ -423,13 +396,7 @@ const App: React.FC = () => {
               <label htmlFor="media-upload" className="block text-sm font-medium mb-2">
                 Carregar Vídeo ou Imagem:
               </label>
-              <input
-                type="file"
-                id="media-upload"
-                accept="video/*,image/*"
-                onChange={handleFileUpload}
-                className="w-full p-2 border rounded-md"
-              />
+              <input type="file" id="media-upload" accept="video/*,image/*" onChange={handleFileUpload} className="" />
             </div>
 
             {/* Player de Vídeo/Imagem */}

@@ -14,17 +14,32 @@ const initDB = async () => {
   });
 };
 
-export async function saveMedia(key: string, file: File) {
-  const db = await initDB();
-  await db.put(STORE_NAME, file, key);
+export async function saveMedia(key: string, file: File): Promise<void> {
+  try {
+    const db = await initDB();
+    await db.put(STORE_NAME, file, key);
+  } catch (error) {
+    console.error('Error saving media:', error);
+    throw error;
+  }
 }
 
 export async function getMedia(key: string): Promise<File | null> {
-  const db = await initDB();
-  return db.get(STORE_NAME, key);
+  try {
+    const db = await initDB();
+    return await db.get(STORE_NAME, key);
+  } catch (error) {
+    console.error('Error getting media:', error);
+    return null;
+  }
 }
 
-export async function deleteMedia(key: string) {
-  const db = await initDB();
-  await db.delete(STORE_NAME, key);
+export async function deleteMedia(key: string): Promise<void> {
+  try {
+    const db = await initDB();
+    await db.delete(STORE_NAME, key);
+  } catch (error) {
+    console.error('Error deleting media:', error);
+    throw error;
+  }
 } 

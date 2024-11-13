@@ -262,7 +262,7 @@ export function VideoPlayer({
     const newMarkerCount = markerCount + 1;
     const newMarker: Marker = {
       id: uuidv4(),
-      name: `Marker_${newMarkerCount.toString().padStart(3, '0')}`,
+      name: `Marcador ${newMarkerCount.toString().padStart(3, '0')}`,
       x: currentRect.x,
       y: currentRect.y,
       width: currentRect.width,
