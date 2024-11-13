@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .app-container {
   display: flex;
   height: 100vh;
@@ -5,7 +9,7 @@
 }
 
 .sidebar {
-  width: 200px;
+  width: 300px;
   background-color: #f4f4f4;
   padding: 10px;
   overflow-y: auto;
@@ -69,7 +73,7 @@
   align-items: center;
   flex-direction: column;
   width: 100%;
-  padding: 20px;
+  padding: 20px 20px 0 20px;
 }
 
 .video-canvas {
@@ -101,7 +105,6 @@
 .timeline-container {
   position: relative;
   width: 640px;
-  margin-top: 10px;
 }
 
 .timeline {
@@ -180,4 +183,8 @@
 .color-segmentation-params span {
   margin-left: 10px;
   font-weight: bold;
+}
+
+.button-export {
+  margin-top: 10px;
 }

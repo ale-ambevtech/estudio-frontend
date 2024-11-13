@@ -9,6 +9,7 @@ import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
+import { VideoControls } from './VideoControls';
 
 interface VideoDimensions {
   width: number;
@@ -82,6 +83,9 @@ const App: React.FC = () => {
     }
     return null;
   });
+
+  const [fps, setFps] = useState(30);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -375,6 +379,25 @@ const App: React.FC = () => {
     }
   }, [resetMarkers, mediaUrl]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('ended', handleEnded);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
   return (
     <div className="app-container">
       <Sidebar
@@ -391,21 +414,28 @@ const App: React.FC = () => {
         </label>
         <input id="media-upload" type="file" accept="video/*,image/*" onChange={handleFileUpload} className="mb-4" />
         {mediaUrl && (
-          <VideoPlayer
-            markers={markers}
-            addMarker={addMarker}
-            selectedMarkerId={selectedMarkerId}
-            videoRef={videoRef}
-            onDimensionsChange={handleVideoDimensionsChange}
-            selectMarker={selectMarker}
-            mediaType={mediaType}
-            mediaUrl={mediaUrl}
-          />
+          <>
+            <VideoPlayer
+              markers={markers}
+              addMarker={addMarker}
+              selectedMarkerId={selectedMarkerId}
+              videoRef={videoRef}
+              onDimensionsChange={handleVideoDimensionsChange}
+              selectMarker={selectMarker}
+              mediaType={mediaType}
+              mediaUrl={mediaUrl}
+            />
+          </>
         )}
         {mediaType === 'video' && (
-          <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
+          <>
+            <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
+            <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} />
+          </>
         )}
-        <button onClick={exportRecipe}>Exportar Receita</button>
+        <button onClick={exportRecipe} className="button-export">
+          Exportar Receita
+        </button>
       </div>
       <ConfigPanel
         marker={markers.find((m) => m.id === selectedMarkerId) || null}

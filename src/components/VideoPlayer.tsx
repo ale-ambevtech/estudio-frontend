@@ -1,6 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Marker } from '../types';
-import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaFastForward, FaFastBackward } from 'react-icons/fa';
 import { v4 as uuidv4 } from 'uuid';
 import { VIDEO } from '../constants/dimensions';
 import { MARKER_COLORS } from '../constants/colors';
@@ -56,11 +55,6 @@ export function VideoPlayer({
     setFps(newFps);
     console.log('Calculated FPS:', newFps);
   }, [videoRef]);
-
-  const { handlePlayPause, handleStepForward, handleStepBackward } = useVideoControls({
-    videoRef,
-    fps,
-  });
 
   useEffect(() => {
     if (!mediaUrl || mediaType !== 'video') return;
@@ -286,18 +280,6 @@ export function VideoPlayer({
     setCurrentRect(null);
   }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor]);
 
-  const handleSkipToStart = () => {
-    const video = videoRef.current!;
-    video.currentTime = 0;
-    video.pause();
-  };
-
-  const handleSkipToEnd = () => {
-    const video = videoRef.current!;
-    video.currentTime = video.duration;
-    video.pause();
-  };
-
   return (
     <div ref={containerRef} className="video-player-container">
       <canvas
@@ -309,27 +291,6 @@ export function VideoPlayer({
         width={canvasSize.width}
         height={canvasSize.height}
       />
-
-      {mediaType === 'video' && isMediaLoaded && (
-        <div className="controls">
-          <button type="button" onClick={handleSkipToStart} aria-label="Ir para o início">
-            <FaFastBackward />
-          </button>
-          <button type="button" onClick={handleStepBackward} aria-label="Retroceder um quadro">
-            <FaStepBackward />
-          </button>
-          <button type="button" onClick={handlePlayPause} aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}>
-            {isPlaying ? <FaPause /> : <FaPlay />}
-          </button>
-          <button type="button" onClick={handleStepForward} aria-label="Avançar um quadro">
-            <FaStepForward />
-          </button>
-          <button type="button" onClick={handleSkipToEnd} aria-label="Ir para o final">
-            <FaFastForward />
-          </button>
-        </div>
-      )}
-
       {mediaType === 'video' && mediaUrl && <video ref={videoRef} className="hidden" preload="auto" />}
     </div>
   );
