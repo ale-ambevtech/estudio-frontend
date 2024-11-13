@@ -367,6 +367,12 @@ const App: React.FC = () => {
     localStorage.removeItem('mediaType');
     await deleteMedia('currentMedia');
     resetMarkers();
+
+    // Clear the file input
+    const fileInput = document.getElementById('media-upload') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   }, [resetMarkers, mediaUrl]);
 
   return (
