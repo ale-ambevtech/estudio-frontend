@@ -16,6 +16,7 @@ import { validateProcessRequest, logProcessingResult } from '../utils/debug';
 import { v4 as uuidv4 } from 'uuid';
 import { hexToRgb } from '../utils/colors';
 import axios from 'axios';
+import { Loading } from './Loading';
 
 interface VideoDimensions {
   width: number;
@@ -110,6 +111,7 @@ const App: React.FC = () => {
   });
 
   const [processingResults, setProcessingResults] = useState<BoundingBoxResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -310,6 +312,7 @@ const App: React.FC = () => {
     if (!file) return;
 
     try {
+      setIsLoading(true);
       // Upload para o backend
       const metadata = await uploadVideo(file);
       console.log('Video uploaded successfully:', metadata);
@@ -330,6 +333,8 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Error uploading video:', error);
       // Adicione aqui tratamento de erro adequado
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -564,6 +569,7 @@ const App: React.FC = () => {
           className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
         />
       </div>
+      {isLoading && <Loading />}
     </div>
   );
 };

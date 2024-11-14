@@ -346,17 +346,24 @@ export function VideoPlayer({
   }, [markers, selectedMarkerId, processingResults]);
 
   return (
-    <div ref={containerRef} className="video-player-container">
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        className="video-canvas"
-        width={canvasSize.width}
-        height={canvasSize.height}
-      />
-      {mediaType === 'video' && mediaUrl && <video ref={videoRef} className="hidden" preload="auto" />}
+    <div className="relative">
+      <div ref={containerRef} className="video-player-container">
+        <canvas
+          ref={canvasRef}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          className="video-canvas"
+          width={canvasSize.width}
+          height={canvasSize.height}
+        />
+        {mediaType === 'video' && mediaUrl && <video ref={videoRef} className="hidden" preload="auto" />}
+      </div>
+      {!mediaUrl && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+          <p className="text-gray-500">Nenhuma mídia carregada</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,4 +12,8 @@ export interface VideoPlayerProps {
   mediaUrl: string | null;
 }
 
+export interface LoadingProps {
+  message?: string;
+}
+
 // Adicione outras interfaces de props conforme necessário 
