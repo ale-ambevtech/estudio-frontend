@@ -170,7 +170,6 @@ export function VideoPlayer({
 
   const drawFrame = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      // Limpar o canvas e desenhar o frame do vídeo
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
       if (mediaType === 'video' && videoRef.current) {
@@ -198,7 +197,8 @@ export function VideoPlayer({
         if (selectedMarker) {
           const boxes = processingResults[0].bounding_boxes;
 
-          ctx.strokeStyle = '#00ff00';
+          // Usar a mesma cor do marcador selecionado
+          ctx.strokeStyle = selectedMarker.color;
           ctx.lineWidth = 2;
 
           boxes.forEach((box: number[]) => {
