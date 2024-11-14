@@ -152,31 +152,3 @@
   margin-top: 10px;
 }
 
-/* Customização do Slider do PrimeReact */
-.p-slider {
-  @apply bg-slate-200;
-}
-
-.p-slider .p-slider-range {
-  @apply bg-slate-600;
-}
-
-.p-slider .p-slider-handle {
-  @apply border-2 border-slate-600 bg-white;
-  @apply hover:border-slate-700 hover:bg-slate-50;
-  @apply focus:border-slate-700 focus:shadow-md;
-  margin-top: -8px;
-  margin-left: -8px;
-}
-
-/* Ajuste do tamanho da trilha */
-.p-slider.p-slider-horizontal {
-  height: 4px;
-}
-
-/* Ajuste do tamanho do handle */
-.p-slider .p-slider-handle {
-  height: 16px;
-  width: 16px;
-}
-

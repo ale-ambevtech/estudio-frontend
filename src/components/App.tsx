@@ -10,10 +10,27 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 import { VideoControls } from './VideoControls';
+import { uploadVideo, processVideo } from '../services/api';
+import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult, RGBColor } from '../types/api';
+import { validateProcessRequest, logProcessingResult } from '../utils/debug';
+import { v4 as uuidv4 } from 'uuid';
+import { hexToRgb } from '../utils/colors';
+import axios from 'axios';
 
 interface VideoDimensions {
   width: number;
   height: number;
+}
+
+interface ColorRange {
+  lower: RGBColor;
+  upper: RGBColor;
+}
+
+// Definir interface para o formato específico dos resultados
+interface BoundingBoxResult {
+  function: string;
+  bounding_boxes: number[][];
 }
 
 const App: React.FC = () => {
@@ -86,6 +103,13 @@ const App: React.FC = () => {
 
   const [fps, setFps] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const [selectedColors, setSelectedColors] = useState<ColorRange>({
+    lower: { r: 0, g: 0, b: 0 },
+    upper: { r: 255, g: 255, b: 255 },
+  });
+
+  const [processingResults, setProcessingResults] = useState<BoundingBoxResult[]>([]);
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -285,18 +309,107 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (mediaUrl) {
-      URL.revokeObjectURL(mediaUrl);
+    try {
+      // Upload para o backend
+      const metadata = await uploadVideo(file);
+      console.log('Video uploaded successfully:', metadata);
+
+      // Criar URL local para preview
+      if (mediaUrl) {
+        URL.revokeObjectURL(mediaUrl);
+      }
+
+      const newUrl = URL.createObjectURL(file);
+      setMediaUrl(newUrl);
+
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      setMediaType(type);
+
+      localStorage.setItem('mediaType', type);
+      await saveMedia('currentMedia', file);
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      // Adicione aqui tratamento de erro adequado
     }
+  };
 
-    const newUrl = URL.createObjectURL(file);
-    setMediaUrl(newUrl);
+  const handleProcessVideo = async () => {
+    if (!selectedMarkerId) return;
+    const marker = markers.find((m) => m.id === selectedMarkerId);
+    if (!marker || !marker.opencvParams) return;
 
-    const type = file.type.startsWith('video/') ? 'video' : 'image';
-    setMediaType(type);
+    const request: ProcessVideoRequest = {
+      pdi_functions: [
+        {
+          function: OPENCV_FUNCTIONS.COLOR_SEGMENTATION,
+          parameters: {
+            lower_color: marker.opencvParams.lowerColor || { r: 0, g: 0, b: 0 },
+            upper_color: marker.opencvParams.upperColor || { r: 255, g: 255, b: 255 },
+            tolerance: Number(marker.opencvParams.tolerance) || 10,
+            min_area: Number(marker.opencvParams.minArea) || 100,
+            max_area: Number(marker.opencvParams.maxArea) || 10000,
+          },
+          output_type: OUTPUT_TYPES.BOUNDING_BOX,
+        },
+      ],
+      roi: {
+        position: {
+          x: Math.round(marker.x),
+          y: Math.round(marker.y),
+        },
+        size: {
+          width: Math.round(marker.width),
+          height: Math.round(marker.height),
+        },
+      },
+      timestamp: Math.round((videoRef.current?.currentTime || 0) * 1000),
+    };
 
-    localStorage.setItem('mediaType', type);
-    await saveMedia('currentMedia', file);
+    console.log('Processing request with colors:', {
+      lower: request.pdi_functions[0].parameters.lower_color,
+      upper: request.pdi_functions[0].parameters.upper_color,
+    });
+
+    try {
+      console.log('1. Sending request:', request);
+      const result = (await processVideo(request)) as ProcessingResult;
+      console.log('2. Raw API result:', result);
+      console.log('2.1 Result structure:', {
+        hasResults: !!result.results,
+        resultsLength: result.results?.length,
+        firstResult: result.results?.[0],
+      });
+
+      if (result.results?.[0]) {
+        const firstResult = result.results[0];
+        console.log('3. First result:', firstResult);
+
+        // Verificar se temos bounding_boxes
+        if ('bounding_boxes' in firstResult) {
+          console.log('3.1 Bounding boxes found:', firstResult.bounding_boxes);
+
+          const formattedResults = [
+            {
+              function: firstResult.function,
+              bounding_boxes: firstResult.bounding_boxes as number[][],
+            },
+          ];
+
+          console.log('4. About to set formatted results:', formattedResults);
+          setProcessingResults(formattedResults);
+          console.log('5. State update triggered');
+        } else {
+          console.log('No bounding_boxes found in result');
+          setProcessingResults([]);
+        }
+      } else {
+        console.log('No valid results found in response');
+        setProcessingResults([]);
+      }
+    } catch (error) {
+      console.error('Error in handleProcessVideo:', error);
+      setProcessingResults([]);
+    }
   };
 
   useEffect(() => {
@@ -374,6 +487,15 @@ const App: React.FC = () => {
   // Adicionar este seletor para obter o marcador selecionado
   const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
 
+  useEffect(() => {
+    console.log('6. Processing results state updated:', processingResults);
+  }, [processingResults]);
+
+  // Adicionar useEffect para monitorar mudanças nos resultados
+  useEffect(() => {
+    console.log('Processing results changed:', processingResults);
+  }, [processingResults]);
+
   return (
     <div className="min-h-screen bg-gray-800">
       <div className="container mx-auto p-4 grid grid-cols-[280px_1fr_280px] gap-6">
@@ -410,7 +532,16 @@ const App: React.FC = () => {
                 selectMarker={selectMarker}
                 mediaType={mediaType}
                 mediaUrl={mediaUrl}
+                processingResults={processingResults}
               />
+              {selectedMarkerId && (
+                <button
+                  onClick={handleProcessVideo}
+                  className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Process Selected Region
+                </button>
+              )}
             </div>
 
             {/* Timeline e Controles */}

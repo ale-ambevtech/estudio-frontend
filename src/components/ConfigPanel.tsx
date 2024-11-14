@@ -3,6 +3,8 @@ import { Marker } from '../types';
 import { Slider } from 'primereact/slider';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
+import { rgbToHex, hexToRgb } from '../utils/colors';
+import type { RGBColor } from '../types/api';
 
 export interface ConfigPanelProps {
   marker: Marker | null;
@@ -10,6 +12,20 @@ export interface ConfigPanelProps {
   deleteMarker: (id: string) => void;
   className?: string;
 }
+
+interface OpenCVParams {
+  lowerColor?: RGBColor;
+  upperColor?: RGBColor;
+  tolerance?: number;
+  minArea?: number;
+  maxArea?: number;
+  shapes?: string[];
+  shapeTolerance?: number;
+  templateImage?: string;
+  threshold?: number;
+}
+
+type OpenCVParamKey = keyof OpenCVParams;
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteMarker, className }) => {
   if (!marker) {
@@ -39,13 +55,43 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
     deleteMarker(marker.id);
   };
 
-  const handleParamChange = (param: string, value: string | number | string[]) => {
+  const handleParamChange = (param: OpenCVParamKey, value: string | number | string[]) => {
+    if (!marker) return;
+
+    const updatedParams = { ...marker.opencvParams };
+
+    switch (param) {
+      case 'lowerColor':
+      case 'upperColor':
+        updatedParams[param] = hexToRgb(value as string);
+        break;
+      case 'shapes':
+        updatedParams.shapes = value as string[];
+        break;
+      case 'tolerance':
+        updatedParams.tolerance = Number(value);
+        break;
+      case 'minArea':
+        updatedParams.minArea = Number(value);
+        break;
+      case 'maxArea':
+        updatedParams.maxArea = Number(value);
+        break;
+      case 'shapeTolerance':
+        updatedParams.shapeTolerance = Number(value);
+        break;
+      case 'threshold':
+        updatedParams.threshold = Number(value);
+        break;
+      default:
+        updatedParams[param] = value as string;
+    }
+
+    console.log('Updated color params:', updatedParams);
+
     updateMarker({
       ...marker,
-      opencvParams: {
-        ...marker.opencvParams,
-        [param]: value,
-      },
+      opencvParams: updatedParams,
     });
   };
 
@@ -54,105 +100,64 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
       <div className="color-segmentation-params space-y-4">
         <h3 className="text-lg font-semibold mb-2">Parâmetros de Segmentação de Cor</h3>
         <div className="space-y-2">
-          <label htmlFor="lowerColor" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="lowerColor" className="block text-sm font-medium">
             Cor Inferior:
           </label>
           <input
             type="color"
             id="lowerColor"
-            value={marker.opencvParams?.lowerColor || '#000000'}
+            value={rgbToHex(marker.opencvParams?.lowerColor || { r: 0, g: 0, b: 0 })}
             onChange={(e) => handleParamChange('lowerColor', e.target.value)}
             className="w-full h-10 rounded-md"
-            aria-label="Cor inferior para segmentação"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="upperColor" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="upperColor" className="block text-sm font-medium">
             Cor Superior:
           </label>
           <input
             type="color"
             id="upperColor"
-            value={marker.opencvParams?.upperColor || '#FFFFFF'}
+            value={rgbToHex(marker.opencvParams?.upperColor || { r: 255, g: 255, b: 255 })}
             onChange={(e) => handleParamChange('upperColor', e.target.value)}
             className="w-full h-10 rounded-md"
-            aria-label="Cor superior para segmentação"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="tolerance" className="block text-sm font-medium">
+          <label htmlFor="tolerance" className="block text-sm font-medium text-gray-700">
             Tolerância:
           </label>
-          <div className="flex items-center space-x-2">
-            <Slider
-              id="tolerance"
-              min={0}
-              max={100}
-              value={marker.opencvParams?.tolerance || 20}
-              onChange={(e) => handleParamChange('tolerance', e.value as number)}
-              className="flex-grow"
-            />
-            <InputNumber
-              value={marker.opencvParams?.tolerance || 20}
-              onValueChange={(e) => handleParamChange('tolerance', e.value as number)}
-              min={0}
-              max={100}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={0}
-              maxFractionDigits={0}
-            />
-          </div>
+          <input
+            type="number"
+            id="tolerance"
+            value={(marker.opencvParams?.tolerance || 10).toString()}
+            onChange={(e) => handleParamChange('tolerance', e.target.value)}
+            className="w-full rounded-md"
+          />
         </div>
         <div className="space-y-2">
-          <label htmlFor="minArea" className="block text-sm font-medium">
+          <label htmlFor="minArea" className="block text-sm font-medium text-gray-700">
             Área Mínima:
           </label>
-          <div className="flex items-center space-x-2">
-            <Slider
-              id="minArea"
-              min={50}
-              max={20000}
-              value={marker.opencvParams?.minArea || 100}
-              onChange={(e) => handleParamChange('minArea', e.value as number)}
-              className="flex-grow"
-            />
-            <InputNumber
-              value={marker.opencvParams?.minArea || 100}
-              onValueChange={(e) => handleParamChange('minArea', e.value as number)}
-              min={50}
-              max={20000}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={0}
-              maxFractionDigits={0}
-            />
-          </div>
+          <input
+            type="number"
+            id="minArea"
+            value={(marker.opencvParams?.minArea || 100).toString()}
+            onChange={(e) => handleParamChange('minArea', e.target.value)}
+            className="w-full rounded-md"
+          />
         </div>
         <div className="space-y-2">
-          <label htmlFor="maxArea" className="block text-sm font-medium">
+          <label htmlFor="maxArea" className="block text-sm font-medium text-gray-700">
             Área Máxima:
           </label>
-          <div className="flex items-center space-x-2">
-            <Slider
-              id="maxArea"
-              min={50}
-              max={20000}
-              value={marker.opencvParams?.maxArea || 10000}
-              onChange={(e) => handleParamChange('maxArea', e.value as number)}
-              className="flex-grow"
-            />
-            <InputNumber
-              value={marker.opencvParams?.maxArea || 10000}
-              onValueChange={(e) => handleParamChange('maxArea', e.value as number)}
-              min={50}
-              max={20000}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={0}
-              maxFractionDigits={0}
-            />
-          </div>
+          <input
+            type="number"
+            id="maxArea"
+            value={(marker.opencvParams?.maxArea || 10000).toString()}
+            onChange={(e) => handleParamChange('maxArea', e.target.value)}
+            className="w-full rounded-md"
+          />
         </div>
       </div>
     );
@@ -172,90 +177,34 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
           <label htmlFor="shapes" className="block text-sm font-medium">
             Forma:
           </label>
-          <Dropdown
-            id="shapes"
-            value={marker.opencvParams?.shapes?.[0] || ''}
-            options={shapeOptions}
-            onChange={(e) => handleParamChange('shapes', [e.value])}
-            className="w-full"
-          />
+          <select
+            multiple
+            aria-label="Selecione as formas"
+            value={marker.opencvParams?.shapes || []}
+            onChange={(e) => {
+              const shapes = Array.from(e.target.selectedOptions, (option) => option.value);
+              handleParamChange('shapes', shapes);
+            }}
+            className="w-full rounded-md"
+          >
+            {shapeOptions.map((shape) => (
+              <option key={shape.value} value={shape.value}>
+                {shape.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="space-y-2">
-          <label htmlFor="minArea" className="block text-sm font-medium">
-            Área Mínima:
-          </label>
-          <div className="flex items-center space-x-2">
-            <Slider
-              id="minArea"
-              min={50}
-              max={20000}
-              value={marker.opencvParams?.minArea || 100}
-              onChange={(e) => handleParamChange('minArea', e.value as number)}
-              className="flex-grow"
-            />
-            <InputNumber
-              value={marker.opencvParams?.minArea || 100}
-              onValueChange={(e) => handleParamChange('minArea', e.value as number)}
-              min={50}
-              max={20000}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={0}
-              maxFractionDigits={0}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="maxArea" className="block text-sm font-medium">
-            Área Máxima:
-          </label>
-          <div className="flex items-center space-x-2">
-            <Slider
-              id="maxArea"
-              min={50}
-              max={20000}
-              value={marker.opencvParams?.maxArea || 10000}
-              onChange={(e) => handleParamChange('maxArea', e.value as number)}
-              className="flex-grow"
-            />
-            <InputNumber
-              value={marker.opencvParams?.maxArea || 10000}
-              onValueChange={(e) => handleParamChange('maxArea', e.value as number)}
-              min={50}
-              max={20000}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={0}
-              maxFractionDigits={0}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="shapeTolerance" className="block text-sm font-medium">
+          <label htmlFor="shapeTolerance" className="block text-sm font-medium text-gray-700">
             Tolerância de Forma:
           </label>
-          <div className="flex items-center space-x-2">
-            <Slider
-              id="shapeTolerance"
-              min={0}
-              max={0.1}
-              step={0.001}
-              value={marker.opencvParams?.shapeTolerance || 0.02}
-              onChange={(e) => handleParamChange('shapeTolerance', e.value as number)}
-              className="flex-grow"
-            />
-            <InputNumber
-              value={marker.opencvParams?.shapeTolerance || 0.02}
-              onValueChange={(e) => handleParamChange('shapeTolerance', e.value as number)}
-              min={0}
-              max={0.1}
-              step={0.001}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={3}
-              maxFractionDigits={3}
-            />
-          </div>
+          <input
+            type="number"
+            id="shapeTolerance"
+            value={(marker.opencvParams?.shapeTolerance || 0.1).toString()}
+            onChange={(e) => handleParamChange('shapeTolerance', e.target.value)}
+            className="w-full rounded-md"
+          />
         </div>
       </div>
     );
@@ -311,14 +260,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             />
             <InputNumber
               value={marker.opencvParams?.threshold || 0.8}
-              onValueChange={(e) => handleParamChange('threshold', e.value as number)}
-              min={0.5}
-              max={0.95}
-              step={0.01}
-              className="w-20"
-              locale="pt-BR"
-              minFractionDigits={2}
-              maxFractionDigits={2}
+              onChange={(e) => handleParamChange('threshold', e.value || 0)}
+              className="w-full"
             />
           </div>
         </div>

@@ -11,9 +11,10 @@ interface VideoPlayerProps {
   selectedMarkerId: string | null;
   videoRef: React.RefObject<HTMLVideoElement>;
   onDimensionsChange: (dimensions: { width: number; height: number }) => void;
-  selectMarker: (id: string) => void; // Adicione esta linha
+  selectMarker: (id: string) => void;
   mediaType: 'video' | 'image' | null;
   mediaUrl: string | null;
+  processingResults: any[];
 }
 
 export function VideoPlayer({
@@ -25,9 +26,19 @@ export function VideoPlayer({
   selectMarker,
   mediaType,
   mediaUrl,
+  processingResults,
 }: VideoPlayerProps) {
+  console.log('VideoPlayer rendered with:', {
+    markersCount: markers.length,
+    selectedMarkerId,
+    hasResults: !!processingResults?.length,
+    processingResults,
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number>();
+  const isFirstRender = useRef(true);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -150,55 +161,96 @@ export function VideoPlayer({
     }
   }, [mediaType, mediaUrl, onDimensionsChange]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) {
-      console.log('Canvas or context not available');
-      return;
-    }
-    if (!isVideoReady || canvasSize.width === 0 || canvasSize.height === 0) {
-      console.log('Video or canvas dimensions not ready');
-      return;
-    }
-
-    console.log('Starting canvas render loop with dimensions:', canvasSize);
-    canvas.width = canvasSize.width;
-    canvas.height = canvasSize.height;
-
-    const renderFrame = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const drawFrame = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      // Limpar o canvas e desenhar o frame do vídeo
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
       if (mediaType === 'video' && videoRef.current) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      } else if (mediaType === 'image' && image) {
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(videoRef.current, 0, 0, ctx.canvas.width, ctx.canvas.height);
       }
 
-      // Draw markers
+      // Desenhar marcadores
       markers.forEach((marker) => {
         ctx.strokeStyle = marker.color;
-        ctx.lineWidth = marker.isGeneral
-          ? marker.id === selectedMarkerId
-            ? 12
-            : 4
-          : marker.id === selectedMarkerId
-            ? 6
-            : 2;
+        ctx.lineWidth = marker.id === selectedMarkerId ? 2 : 1;
         ctx.strokeRect(marker.x, marker.y, marker.width, marker.height);
       });
 
-      if (isDrawing && currentRect) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
+      // Desenhar bounding boxes se existirem
+      if (selectedMarkerId && processingResults?.length > 0) {
+        const selectedMarker = markers.find((m) => m.id === selectedMarkerId);
+
+        if (selectedMarker) {
+          const boxes = processingResults[0].bounding_boxes;
+
+          ctx.strokeStyle = '#00ff00';
+          ctx.lineWidth = 2;
+
+          boxes.forEach((box: number[]) => {
+            const [x, y, width, height] = box;
+            const boxX = selectedMarker.x + x;
+            const boxY = selectedMarker.y + y;
+
+            ctx.beginPath();
+            ctx.rect(boxX, boxY, width, height);
+            ctx.stroke();
+          });
+        }
       }
+    },
+    [markers, selectedMarkerId, processingResults, mediaType, videoRef]
+  );
 
-      requestAnimationFrame(renderFrame);
-    };
+  // Manter o loop de renderização para o vídeo
+  const renderFrame = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
 
+    if (ctx) {
+      drawFrame(ctx);
+    }
+
+    animationFrameRef.current = requestAnimationFrame(renderFrame);
+  }, [drawFrame]);
+
+  // Iniciar o loop de renderização
+  useEffect(() => {
+    console.log('Starting video render loop');
     renderFrame();
-  }, [markers, isDrawing, currentRect, videoRef, isVideoReady, selectedMarkerId, mediaType, image, canvasSize]);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [renderFrame]);
+
+  useEffect(() => {
+    console.log('Processing results updated');
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+
+    if (ctx) {
+      // Renderizar apenas uma vez, sem iniciar loop
+      drawFrame(ctx);
+    }
+  }, [processingResults, drawFrame]);
+
+  useEffect(() => {
+    console.log('Processing results updated:', {
+      hasResults: !!processingResults?.length,
+      results: processingResults,
+    });
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+
+    if (ctx) {
+      drawFrame(ctx);
+    }
+  }, [processingResults, drawFrame]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -269,6 +321,10 @@ export function VideoPlayer({
       height: currentRect.height,
       color: getNextColor(),
       isGeneral: false,
+      opencvParams: {
+        lowerColor: { r: 0, g: 0, b: 255 },
+        upperColor: { r: 255, g: 255, b: 255 },
+      },
     };
 
     addMarker(newMarker);
@@ -278,6 +334,16 @@ export function VideoPlayer({
     setStartPoint(null);
     setCurrentRect(null);
   }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor]);
+
+  // Adicionar useEffect para monitorar mudanças nas props
+  useEffect(() => {
+    console.log('Props updated:', {
+      markersCount: markers.length,
+      selectedMarkerId,
+      hasResults: !!processingResults?.length,
+      processingResults,
+    });
+  }, [markers, selectedMarkerId, processingResults]);
 
   return (
     <div ref={containerRef} className="video-player-container">

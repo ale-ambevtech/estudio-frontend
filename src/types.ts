@@ -1,3 +1,5 @@
+import { RGBColor } from "./types/api";
+
 export interface Marker {
   id: string;
   name: string;
@@ -9,8 +11,8 @@ export interface Marker {
   isGeneral: boolean;
   opencvFunction?: 'colorSegmentation' | 'detectShapes' | 'templateMatching' | 'detectPeople';
   opencvParams?: {
-    lowerColor?: string;
-    upperColor?: string;
+    lowerColor?: RGBColor;
+    upperColor?: RGBColor;
     tolerance?: number;
     minArea?: number;
     maxArea?: number;
