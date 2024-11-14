@@ -106,7 +106,7 @@ const App: React.FC = () => {
     upper: { r: 255, g: 255, b: 255 },
   });
 
-  const [processingResults, setProcessingResults] = useState<BoundingBoxResult[]>([]);
+  const [processingResults, setProcessingResults] = useState<Map<string, BoundingBoxResult[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
 
   const [isSyncEnabled, setIsSyncEnabled] = useState(false);
@@ -161,6 +161,12 @@ const App: React.FC = () => {
     });
     // Seleciona automaticamente o novo marcador
     setSelectedMarkerId(marker.id);
+    // Garante que o novo marcador não tenha resultados
+    setProcessingResults((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(marker.id);
+      return newMap;
+    });
   }, []);
 
   const selectMarker = useCallback((id: string) => {
@@ -203,6 +209,12 @@ const App: React.FC = () => {
         }
 
         return [generalMarker, ...remainingMarkers];
+      });
+      // Limpa os resultados do marcador deletado
+      setProcessingResults((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
       });
       console.log('Deleting marker with id:', id);
     } else {
@@ -339,11 +351,12 @@ const App: React.FC = () => {
   const handleProcessVideo = async () => {
     if (!selectedMarkerId) return;
     const marker = markers.find((m) => m.id === selectedMarkerId);
-    if (!marker || !marker.opencvParams) return;
+    if (!marker || !marker.opencvFunction || !marker.opencvParams) return;
 
-    const request: ProcessVideoRequest = {
-      pdi_functions: [
-        {
+    let pdiFunction;
+    switch (marker.opencvFunction) {
+      case 'colorSegmentation':
+        pdiFunction = {
           function: OPENCV_FUNCTIONS.COLOR_SEGMENTATION,
           parameters: {
             lower_color: marker.opencvParams.lowerColor || { r: 0, g: 0, b: 0 },
@@ -353,8 +366,49 @@ const App: React.FC = () => {
             max_area: Number(marker.opencvParams.maxArea) || 10000,
           },
           output_type: OUTPUT_TYPES.BOUNDING_BOX,
-        },
-      ],
+        };
+        break;
+
+      case 'detectShapes':
+        pdiFunction = {
+          function: OPENCV_FUNCTIONS.SHAPE_DETECTION,
+          parameters: {
+            shapes: marker.opencvParams.shapes || ['circle', 'rectangle', 'triangle'],
+            shape_tolerance: Number(marker.opencvParams.shapeTolerance) || 0.1,
+          },
+          output_type: OUTPUT_TYPES.BOUNDING_BOX,
+        };
+        break;
+
+      case 'templateMatching':
+        pdiFunction = {
+          function: OPENCV_FUNCTIONS.TEMPLATE_MATCHING,
+          parameters: {
+            template_image: marker.opencvParams.templateImage || '',
+            threshold: Number(marker.opencvParams.threshold) || 0.8,
+          },
+          output_type: OUTPUT_TYPES.BOUNDING_BOX,
+        };
+        break;
+
+      case 'detectPeople':
+        pdiFunction = {
+          function: OPENCV_FUNCTIONS.PEOPLE_DETECTION,
+          parameters: {
+            min_area: Number(marker.opencvParams.minArea) || 1000,
+            max_area: Number(marker.opencvParams.maxArea) || 60000,
+          },
+          output_type: OUTPUT_TYPES.BOUNDING_BOX,
+        };
+        break;
+
+      default:
+        console.error('Invalid OpenCV function selected');
+        return;
+    }
+
+    const request: ProcessVideoRequest = {
+      pdi_functions: [pdiFunction],
       roi: {
         position: {
           x: Math.round(marker.x),
@@ -368,50 +422,45 @@ const App: React.FC = () => {
       timestamp: Math.round((videoRef.current?.currentTime || 0) * 1000),
     };
 
-    console.log('Processing request with colors:', {
-      lower: request.pdi_functions[0].parameters.lower_color,
-      upper: request.pdi_functions[0].parameters.upper_color,
-    });
-
     try {
       console.log('1. Sending request:', request);
       const result = (await processVideo(request)) as ProcessingResult;
-      console.log('2. Raw API result:', result);
-      console.log('2.1 Result structure:', {
-        hasResults: !!result.results,
-        resultsLength: result.results?.length,
-        firstResult: result.results?.[0],
-      });
 
       if (result.results?.[0]) {
         const firstResult = result.results[0];
-        console.log('3. First result:', firstResult);
-
-        // Verificar se temos bounding_boxes
         if ('bounding_boxes' in firstResult) {
-          console.log('3.1 Bounding boxes found:', firstResult.bounding_boxes);
-
           const formattedResults = [
             {
               function: firstResult.function,
               bounding_boxes: firstResult.bounding_boxes as number[][],
             },
           ];
-
-          console.log('4. About to set formatted results:', formattedResults);
-          setProcessingResults(formattedResults);
-          console.log('5. State update triggered');
+          // Atualizar apenas os resultados do marcador atual
+          setProcessingResults((prev) => new Map(prev).set(selectedMarkerId, formattedResults));
         } else {
-          console.log('No bounding_boxes found in result');
-          setProcessingResults([]);
+          // Limpar resultados do marcador atual
+          setProcessingResults((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(selectedMarkerId);
+            return newMap;
+          });
         }
       } else {
-        console.log('No valid results found in response');
-        setProcessingResults([]);
+        // Limpar resultados do marcador atual
+        setProcessingResults((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(selectedMarkerId);
+          return newMap;
+        });
       }
     } catch (error) {
       console.error('Error in handleProcessVideo:', error);
-      setProcessingResults([]);
+      // Limpar resultados do marcador atual em caso de erro
+      setProcessingResults((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(selectedMarkerId);
+        return newMap;
+      });
     }
   };
 

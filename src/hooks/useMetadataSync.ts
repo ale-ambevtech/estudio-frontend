@@ -11,7 +11,8 @@ interface UseMetadataSyncProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   markers: Array<any>;
   isSyncEnabled: boolean;
-  onMetadataUpdate?: (data: ServerMessage['data']) => void;
+  onMetadataUpdate: (data: any) => void;
+  selectedMarkerId?: string | null;
 }
 
 export function useMetadataSync({ 
@@ -19,29 +20,64 @@ export function useMetadataSync({
   videoRef, 
   markers, 
   isSyncEnabled, 
-  onMetadataUpdate 
+  onMetadataUpdate, 
+  selectedMarkerId 
 }: UseMetadataSyncProps) {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const isConnectingRef = useRef(false);
+
+  const sendVideoTime = useCallback(() => {
+    if (
+      wsRef.current?.readyState === WebSocket.OPEN && 
+      videoRef.current && 
+      selectedMarkerId
+    ) {
+      const message = {
+        type: 'sync_request',
+        marker_id: selectedMarkerId,
+        timestamp: Math.round(videoRef.current.currentTime * 1000)
+      };
+      
+      console.log('Sending sync request:', JSON.stringify(message, null, 2));
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }, [selectedMarkerId]);
 
   const connect = useCallback(() => {
-    if (!window.WebSocket) {
-      console.warn('WebSocket not supported');
-      return;
-    }
-
+    if (isConnectingRef.current || !isSyncEnabled) return;
+    
     try {
+      isConnectingRef.current = true;
+      console.log('Connecting to WebSocket...');
+      
       wsRef.current = new WebSocket(WS_URL);
       
       wsRef.current.onopen = () => {
-        console.log('WebSocket connected');
-        reconnectAttemptsRef.current = 0;
+        console.log('WebSocket connected successfully');
+        isConnectingRef.current = false;
+        
+        if (wsRef.current && selectedMarkerId) {
+          const initMessage = {
+            type: 'init',
+            marker_id: selectedMarkerId,
+            client_type: 'web_player'
+          };
+          console.log('Sending init message:', JSON.stringify(initMessage, null, 2));
+          wsRef.current.send(JSON.stringify(initMessage));
+        }
       };
 
       wsRef.current.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data) as ServerMessage;
+          const message = JSON.parse(event.data);
+          console.log('Received WebSocket message:', message);
+          
+          if (message.type === 'error') {
+            console.error('WebSocket error:', message.message);
+            return;
+          }
+          
           if (message.type === 'metadata_sync' && onMetadataUpdate) {
             onMetadataUpdate(message.data);
           }
@@ -50,80 +86,49 @@ export function useMetadataSync({
         }
       };
 
-      wsRef.current.onclose = (event) => {
-        if (event.code === 1006 && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-          const delay = RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current);
-          console.log(`WebSocket disconnected, attempting reconnect in ${delay}ms`);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++;
-            connect();
-          }, delay);
+      wsRef.current.onclose = () => {
+        console.log('WebSocket connection closed, attempting reconnect...');
+        isConnectingRef.current = false;
+        if (isSyncEnabled) {
+          reconnectTimeoutRef.current = setTimeout(connect, 1000);
         }
       };
+
     } catch (error) {
-      console.error('Error connecting to WebSocket:', error);
+      console.error('Error in WebSocket setup:', error);
+      isConnectingRef.current = false;
     }
-  }, [onMetadataUpdate]);
+  }, [isSyncEnabled, selectedMarkerId, onMetadataUpdate]);
 
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-  }, []);
-
-  const sendUpdate = useCallback(
-    debounce((timestamp: number) => {
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-
-      const message: ClientMessage = {
-        timestamp,
-        frame_info: {
-          markings: markers.map(({ x, y, width, height }) => ({
-            x, y, width, height
-          })),
-          functions: markers.map(m => m.opencvFunction).filter(Boolean),
-          parameters: markers.reduce((acc, m) => ({
-            ...acc,
-            [m.id]: m.opencvParams
-          }), {})
-        }
-      };
-
-      wsRef.current.send(JSON.stringify(message));
-    }, 100),
-    [markers]
-  );
-
+  // Enviar atualizações de tempo quando o vídeo estiver em reprodução
   useEffect(() => {
-    if (isPlaying && isSyncEnabled) {
-      connect();
-    } else {
-      disconnect();
+    let intervalId: NodeJS.Timeout;
+
+    if (isPlaying && isSyncEnabled && selectedMarkerId) {
+      intervalId = setInterval(sendVideoTime, 500); // 2fps
     }
 
     return () => {
-      disconnect();
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, [isPlaying, isSyncEnabled, connect, disconnect]);
+  }, [isPlaying, isSyncEnabled, sendVideoTime, selectedMarkerId]);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !isPlaying) return;
+    if (isSyncEnabled) {
+      connect();
+    }
 
-    const handleTimeUpdate = () => {
-      sendUpdate(video.currentTime * 1000);
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
+  }, [isSyncEnabled, connect]);
 
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    return () => video.removeEventListener('timeupdate', handleTimeUpdate);
-  }, [isPlaying, videoRef, sendUpdate]);
-
-  return {
-    isConnected: wsRef.current?.readyState === WebSocket.OPEN,
-    reconnectAttempts: reconnectAttemptsRef.current
-  };
+  return null;
 } 

@@ -81,4 +81,9 @@ export interface ProcessingResult {
     function: PDIFunctionType;
     output: unknown;
   }>;
+}
+
+export interface BoundingBoxResult {
+  function: string;
+  bounding_boxes: number[][];
 } 

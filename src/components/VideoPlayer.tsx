@@ -5,6 +5,7 @@ import { VIDEO } from '../constants/dimensions';
 import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
 import { useMetadataSync } from '../hooks/useMetadataSync';
+import type { BoundingBoxResult } from '../types/api';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -15,9 +16,38 @@ interface VideoPlayerProps {
   selectMarker: (id: string) => void;
   mediaType: 'video' | 'image' | null;
   mediaUrl: string | null;
-  processingResults: any[];
+  processingResults: Map<string, BoundingBoxResult[]>;
   isSyncEnabled: boolean;
   onSyncChange: (enabled: boolean) => void;
+}
+
+interface WebSocketBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface FrameInfo {
+  markings?: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+  detections?: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+  // outros campos possíveis
+}
+
+interface MetadataResponse {
+  timestamp: number;
+  video_id: string;
+  frame_info: FrameInfo;
 }
 
 export function VideoPlayer({
@@ -36,7 +66,7 @@ export function VideoPlayer({
   console.log('VideoPlayer rendered with:', {
     markersCount: markers.length,
     selectedMarkerId,
-    hasResults: !!processingResults?.length,
+    hasResults: !!processingResults?.size,
     processingResults,
   });
 
@@ -61,15 +91,54 @@ export function VideoPlayer({
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isMediaLoaded, setIsMediaLoaded] = useState(false);
+  const [wsBoxes, setWsBoxes] = useState<WebSocketBoundingBox[]>([]);
+  const wsBoxesRef = useRef<WebSocketBoundingBox[]>([]);
 
-  const { isConnected, reconnectAttempts } = useMetadataSync({
+  useEffect(() => {
+    wsBoxesRef.current = wsBoxes;
+    console.log('WebSocket boxes updated:', wsBoxes);
+  }, [wsBoxes]);
+
+  const handleMetadataUpdate = useCallback((data: MetadataResponse) => {
+    console.log('Raw metadata response:', JSON.stringify(data, null, 2));
+
+    const markings = data.frame_info?.markings || data.frame_info?.detections || [];
+    console.log('Extracted markings:', markings);
+
+    if (markings.length > 0) {
+      const newBoxes = markings.filter((box) => {
+        const isValid =
+          box &&
+          typeof box.x === 'number' &&
+          typeof box.y === 'number' &&
+          typeof box.width === 'number' &&
+          typeof box.height === 'number';
+
+        const isBackground = box.x === 0 && box.y === 0 && box.width === 640 && box.height === 360;
+
+        console.log('Box validation:', {
+          box,
+          isValid,
+          isBackground,
+          willBeIncluded: isValid && !isBackground,
+        });
+
+        return isValid && !isBackground;
+      });
+
+      console.log('Setting new boxes:', newBoxes);
+      setWsBoxes(newBoxes);
+      wsBoxesRef.current = newBoxes;
+    }
+  }, []);
+
+  useMetadataSync({
     isPlaying,
     videoRef,
     markers,
     isSyncEnabled,
-    onMetadataUpdate: (data) => {
-      console.log('Received metadata update:', data);
-    },
+    onMetadataUpdate: handleMetadataUpdate,
+    selectedMarkerId,
   });
 
   const handleFpsCalculation = useCallback(() => {
@@ -185,34 +254,56 @@ export function VideoPlayer({
 
   const drawFrame = useCallback(
     (ctx: CanvasRenderingContext2D) => {
+      if (!ctx) return;
+
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+      // Draw video frame
       if (mediaType === 'video' && videoRef.current) {
         ctx.drawImage(videoRef.current, 0, 0, ctx.canvas.width, ctx.canvas.height);
       }
 
-      // Desenhar marcadores existentes
+      // Draw WebSocket boxes
+      if (isSyncEnabled && wsBoxesRef.current.length > 0) {
+        console.log('Drawing WS boxes:', {
+          boxes: wsBoxesRef.current,
+          canvasWidth: ctx.canvas.width,
+          canvasHeight: ctx.canvas.height,
+        });
+
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+
+        wsBoxesRef.current.forEach((box) => {
+          console.log('Drawing box:', box);
+          ctx.beginPath();
+          ctx.rect(box.x, box.y, box.width, box.height);
+          ctx.stroke();
+        });
+      }
+
+      // Draw markers
       markers.forEach((marker) => {
         ctx.strokeStyle = marker.color;
         ctx.lineWidth = marker.id === selectedMarkerId ? 2 : 1;
         ctx.strokeRect(marker.x, marker.y, marker.width, marker.height);
       });
 
-      // Desenhar o retângulo atual sendo criado
+      // Draw current rectangle being created
       if (isDrawing && currentRect) {
         ctx.strokeStyle = getNextColor();
         ctx.lineWidth = 2;
         ctx.strokeRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
       }
 
-      // Desenhar bounding boxes se existirem
-      if (selectedMarkerId && processingResults?.length > 0) {
+      // Draw processing results
+      if (selectedMarkerId) {
+        const markerResults = processingResults.get(selectedMarkerId);
         const selectedMarker = markers.find((m) => m.id === selectedMarkerId);
 
-        if (selectedMarker) {
-          const boxes = processingResults[0].bounding_boxes;
+        if (selectedMarker && markerResults && markerResults.length > 0) {
+          const boxes = markerResults[0].bounding_boxes;
 
-          // Usar a mesma cor do marcador selecionado
           ctx.strokeStyle = selectedMarker.color;
           ctx.lineWidth = 2;
 
@@ -228,32 +319,42 @@ export function VideoPlayer({
         }
       }
     },
-    [markers, selectedMarkerId, processingResults, mediaType, videoRef, isDrawing, currentRect, getNextColor]
+    [
+      markers,
+      selectedMarkerId,
+      processingResults,
+      mediaType,
+      videoRef,
+      isDrawing,
+      currentRect,
+      getNextColor,
+      isSyncEnabled,
+    ]
   );
 
-  // Manter o loop de renderização para o vídeo
-  const renderFrame = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-
-    if (ctx) {
-      drawFrame(ctx);
-    }
-
-    animationFrameRef.current = requestAnimationFrame(renderFrame);
-  }, [drawFrame]);
-
-  // Iniciar o loop de renderização
+  // Use um único useEffect para o loop de renderização
   useEffect(() => {
-    console.log('Starting video render loop');
-    renderFrame();
+    let animationFrame: number;
+
+    const render = () => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+
+      if (ctx) {
+        drawFrame(ctx);
+      }
+
+      animationFrame = requestAnimationFrame(render);
+    };
+
+    render();
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
       }
     };
-  }, [renderFrame]);
+  }, [drawFrame]);
 
   useEffect(() => {
     console.log('Processing results updated');
@@ -269,7 +370,7 @@ export function VideoPlayer({
 
   useEffect(() => {
     console.log('Processing results updated:', {
-      hasResults: !!processingResults?.length,
+      hasResults: !!processingResults?.size,
       results: processingResults,
     });
 
@@ -362,7 +463,7 @@ export function VideoPlayer({
     console.log('Props updated:', {
       markersCount: markers.length,
       selectedMarkerId,
-      hasResults: !!processingResults?.length,
+      hasResults: !!processingResults?.size,
       processingResults,
     });
   }, [markers, selectedMarkerId, processingResults]);
@@ -405,22 +506,6 @@ export function VideoPlayer({
           <span className="ml-2 text-sm text-gray-600">Sync</span>
         </label>
       </div>
-      {isConnected ? (
-        <div className="absolute top-2 right-2 flex items-center gap-2 text-sm">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-green-600">Connected</span>
-        </div>
-      ) : reconnectAttempts > 0 ? (
-        <div className="absolute top-2 right-2 flex items-center gap-2 text-sm">
-          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-          <span className="text-yellow-600">Reconnecting ({reconnectAttempts}/5)...</span>
-        </div>
-      ) : (
-        <div className="absolute top-2 right-2 flex items-center gap-2 text-sm">
-          <div className="w-2 h-2 rounded-full bg-red-500" />
-          <span className="text-red-600">Disconnected</span>
-        </div>
-      )}
     </div>
   );
 }
