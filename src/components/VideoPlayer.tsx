@@ -161,6 +161,13 @@ export function VideoPlayer({
     }
   }, [mediaType, mediaUrl, onDimensionsChange]);
 
+  const getNextColor = useCallback(() => {
+    if (markerCount < MARKER_COLORS.length) {
+      return MARKER_COLORS[markerCount];
+    }
+    return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+  }, [markerCount]);
+
   const drawFrame = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       // Limpar o canvas e desenhar o frame do vídeo
@@ -170,12 +177,19 @@ export function VideoPlayer({
         ctx.drawImage(videoRef.current, 0, 0, ctx.canvas.width, ctx.canvas.height);
       }
 
-      // Desenhar marcadores
+      // Desenhar marcadores existentes
       markers.forEach((marker) => {
         ctx.strokeStyle = marker.color;
         ctx.lineWidth = marker.id === selectedMarkerId ? 2 : 1;
         ctx.strokeRect(marker.x, marker.y, marker.width, marker.height);
       });
+
+      // Desenhar o retângulo atual sendo criado
+      if (isDrawing && currentRect) {
+        ctx.strokeStyle = getNextColor();
+        ctx.lineWidth = 2;
+        ctx.strokeRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
+      }
 
       // Desenhar bounding boxes se existirem
       if (selectedMarkerId && processingResults?.length > 0) {
@@ -199,7 +213,7 @@ export function VideoPlayer({
         }
       }
     },
-    [markers, selectedMarkerId, processingResults, mediaType, videoRef]
+    [markers, selectedMarkerId, processingResults, mediaType, videoRef, isDrawing, currentRect, getNextColor]
   );
 
   // Manter o loop de renderização para o vídeo
@@ -300,13 +314,6 @@ export function VideoPlayer({
       height: y - startPoint.y,
     });
   };
-
-  const getNextColor = useCallback(() => {
-    if (markerCount < MARKER_COLORS.length) {
-      return MARKER_COLORS[markerCount];
-    }
-    return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-  }, [markerCount]);
 
   const handleMouseUp = useCallback(() => {
     if (!isDrawing || !startPoint || !currentRect) return;

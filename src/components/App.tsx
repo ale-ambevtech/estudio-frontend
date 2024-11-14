@@ -12,10 +12,6 @@ import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 import { VideoControls } from './VideoControls';
 import { uploadVideo, processVideo } from '../services/api';
 import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult, RGBColor } from '../types/api';
-import { validateProcessRequest, logProcessingResult } from '../utils/debug';
-import { v4 as uuidv4 } from 'uuid';
-import { hexToRgb } from '../utils/colors';
-import axios from 'axios';
 import { Loading } from './Loading';
 
 interface VideoDimensions {
