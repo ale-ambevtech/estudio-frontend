@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { VIDEO } from '../constants/dimensions';
 import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
+import { useMetadataSync } from '../hooks/useMetadataSync';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -15,6 +16,8 @@ interface VideoPlayerProps {
   mediaType: 'video' | 'image' | null;
   mediaUrl: string | null;
   processingResults: any[];
+  isSyncEnabled: boolean;
+  onSyncChange: (enabled: boolean) => void;
 }
 
 export function VideoPlayer({
@@ -27,6 +30,8 @@ export function VideoPlayer({
   mediaType,
   mediaUrl,
   processingResults,
+  isSyncEnabled,
+  onSyncChange,
 }: VideoPlayerProps) {
   console.log('VideoPlayer rendered with:', {
     markersCount: markers.length,
@@ -56,6 +61,16 @@ export function VideoPlayer({
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isMediaLoaded, setIsMediaLoaded] = useState(false);
+
+  const { isConnected, reconnectAttempts } = useMetadataSync({
+    isPlaying,
+    videoRef,
+    markers,
+    isSyncEnabled,
+    onMetadataUpdate: (data) => {
+      console.log('Received metadata update:', data);
+    },
+  });
 
   const handleFpsCalculation = useCallback(() => {
     const video = videoRef.current;
@@ -369,6 +384,41 @@ export function VideoPlayer({
       {!mediaUrl && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
           <p className="text-gray-500">Nenhuma mídia carregada</p>
+        </div>
+      )}
+      <div className="absolute top-2 left-2 flex items-center gap-2">
+        <label className="flex items-center cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={isSyncEnabled}
+              onChange={(e) => onSyncChange(e.target.checked)}
+            />
+            <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
+            <div
+              className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
+                isSyncEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            ></div>
+          </div>
+          <span className="ml-2 text-sm text-gray-600">Sync</span>
+        </label>
+      </div>
+      {isConnected ? (
+        <div className="absolute top-2 right-2 flex items-center gap-2 text-sm">
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-green-600">Connected</span>
+        </div>
+      ) : reconnectAttempts > 0 ? (
+        <div className="absolute top-2 right-2 flex items-center gap-2 text-sm">
+          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+          <span className="text-yellow-600">Reconnecting ({reconnectAttempts}/5)...</span>
+        </div>
+      ) : (
+        <div className="absolute top-2 right-2 flex items-center gap-2 text-sm">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-red-600">Disconnected</span>
         </div>
       )}
     </div>

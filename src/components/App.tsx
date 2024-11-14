@@ -109,6 +109,8 @@ const App: React.FC = () => {
   const [processingResults, setProcessingResults] = useState<BoundingBoxResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [isSyncEnabled, setIsSyncEnabled] = useState(false);
+
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
     if (savedPosition) {
@@ -534,6 +536,8 @@ const App: React.FC = () => {
                 mediaType={mediaType}
                 mediaUrl={mediaUrl}
                 processingResults={processingResults}
+                isSyncEnabled={isSyncEnabled}
+                onSyncChange={setIsSyncEnabled}
               />
               {selectedMarkerId && (
                 <div className="flex justify-center mt-4">
