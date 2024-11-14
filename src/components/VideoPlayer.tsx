@@ -322,7 +322,7 @@ export function VideoPlayer({
       color: getNextColor(),
       isGeneral: false,
       opencvParams: {
-        lowerColor: { r: 0, g: 0, b: 255 },
+        lowerColor: { r: 0, g: 0, b: 0 },
         upperColor: { r: 255, g: 255, b: 255 },
       },
     };

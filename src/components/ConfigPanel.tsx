@@ -1,7 +1,6 @@
 import React from 'react';
 import { Marker } from '../types';
 import { Slider } from 'primereact/slider';
-import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { rgbToHex, hexToRgb } from '../utils/colors';
 import type { RGBColor } from '../types/api';
