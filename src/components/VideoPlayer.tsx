@@ -6,6 +6,7 @@ import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
 import { useMetadataSync } from '../hooks/useMetadataSync';
 import type { BoundingBoxResult } from '../types/api';
+import type { ServerMessage } from '../types/websocket';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -93,44 +94,41 @@ export function VideoPlayer({
   const [isMediaLoaded, setIsMediaLoaded] = useState(false);
   const [wsBoxes, setWsBoxes] = useState<WebSocketBoundingBox[]>([]);
   const wsBoxesRef = useRef<WebSocketBoundingBox[]>([]);
+  const [syncResults, setSyncResults] = useState<Map<string, BoundingBoxResult[]>>(new Map());
 
   useEffect(() => {
     wsBoxesRef.current = wsBoxes;
     console.log('WebSocket boxes updated:', wsBoxes);
   }, [wsBoxes]);
 
-  const handleMetadataUpdate = useCallback((data: MetadataResponse) => {
-    console.log('Raw metadata response:', JSON.stringify(data, null, 2));
+  const handleMetadataUpdate = useCallback(
+    (data: ServerMessage['data']) => {
+      if (!data || !selectedMarkerId) return;
 
-    const markings = data.frame_info?.markings || data.frame_info?.detections || [];
-    console.log('Extracted markings:', markings);
+      console.log('Received metadata update:', data);
 
-    if (markings.length > 0) {
-      const newBoxes = markings.filter((box) => {
-        const isValid =
-          box &&
-          typeof box.x === 'number' &&
-          typeof box.y === 'number' &&
-          typeof box.width === 'number' &&
-          typeof box.height === 'number';
+      const detections = data.frame_info.detections || [];
+      if (detections.length > 0) {
+        const result: BoundingBoxResult = {
+          function: data.frame_info.functions?.[0] || 'color_segmentation',
+          bounding_boxes: detections.map((d) => [
+            Math.round(d.x),
+            Math.round(d.y),
+            Math.round(d.width),
+            Math.round(d.height),
+          ]),
+        };
 
-        const isBackground = box.x === 0 && box.y === 0 && box.width === 640 && box.height === 360;
-
-        console.log('Box validation:', {
-          box,
-          isValid,
-          isBackground,
-          willBeIncluded: isValid && !isBackground,
+        setSyncResults((prev) => {
+          const newResults = new Map(prev);
+          newResults.set(selectedMarkerId, [result]);
+          console.log('Updated sync results:', newResults);
+          return newResults;
         });
-
-        return isValid && !isBackground;
-      });
-
-      console.log('Setting new boxes:', newBoxes);
-      setWsBoxes(newBoxes);
-      wsBoxesRef.current = newBoxes;
-    }
-  }, []);
+      }
+    },
+    [selectedMarkerId]
+  );
 
   useMetadataSync({
     isPlaying,
@@ -256,80 +254,42 @@ export function VideoPlayer({
     (ctx: CanvasRenderingContext2D) => {
       if (!ctx) return;
 
+      // Limpar o canvas
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-      // Draw video frame
+      // Desenhar o frame do vídeo
       if (mediaType === 'video' && videoRef.current) {
         ctx.drawImage(videoRef.current, 0, 0, ctx.canvas.width, ctx.canvas.height);
       }
 
-      // Draw WebSocket boxes
-      if (isSyncEnabled && wsBoxesRef.current.length > 0) {
-        console.log('Drawing WS boxes:', {
-          boxes: wsBoxesRef.current,
-          canvasWidth: ctx.canvas.width,
-          canvasHeight: ctx.canvas.height,
-        });
-
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
-
-        wsBoxesRef.current.forEach((box) => {
-          console.log('Drawing box:', box);
-          ctx.beginPath();
-          ctx.rect(box.x, box.y, box.width, box.height);
-          ctx.stroke();
-        });
-      }
-
-      // Draw markers
+      // Desenhar os marcadores
       markers.forEach((marker) => {
         ctx.strokeStyle = marker.color;
         ctx.lineWidth = marker.id === selectedMarkerId ? 2 : 1;
         ctx.strokeRect(marker.x, marker.y, marker.width, marker.height);
       });
 
-      // Draw current rectangle being created
-      if (isDrawing && currentRect) {
-        ctx.strokeStyle = getNextColor();
-        ctx.lineWidth = 2;
-        ctx.strokeRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
-      }
-
-      // Draw processing results
+      // Desenhar resultados do processamento
       if (selectedMarkerId) {
-        const markerResults = processingResults.get(selectedMarkerId);
+        const results = isSyncEnabled ? syncResults.get(selectedMarkerId) : processingResults.get(selectedMarkerId);
         const selectedMarker = markers.find((m) => m.id === selectedMarkerId);
 
-        if (selectedMarker && markerResults && markerResults.length > 0) {
-          const boxes = markerResults[0].bounding_boxes;
+        if (selectedMarker && results?.[0]) {
+          console.log(`Drawing ${isSyncEnabled ? 'sync' : 'processing'} results:`, results[0]);
 
           ctx.strokeStyle = selectedMarker.color;
           ctx.lineWidth = 2;
 
-          boxes.forEach((box: number[]) => {
+          results[0].bounding_boxes.forEach((box) => {
             const [x, y, width, height] = box;
-            const boxX = selectedMarker.x + x;
-            const boxY = selectedMarker.y + y;
-
             ctx.beginPath();
-            ctx.rect(boxX, boxY, width, height);
+            ctx.rect(selectedMarker.x + x, selectedMarker.y + y, width, height);
             ctx.stroke();
           });
         }
       }
     },
-    [
-      markers,
-      selectedMarkerId,
-      processingResults,
-      mediaType,
-      videoRef,
-      isDrawing,
-      currentRect,
-      getNextColor,
-      isSyncEnabled,
-    ]
+    [markers, selectedMarkerId, processingResults, syncResults, isSyncEnabled, mediaType, videoRef]
   );
 
   // Use um único useEffect para o loop de renderização

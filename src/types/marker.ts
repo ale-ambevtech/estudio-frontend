@@ -1,4 +1,4 @@
-import { RGBColor } from './api';
+import { PDIFunctionType, RGBColor } from './api';
 
 export interface Marker {
   id: string;
@@ -9,6 +9,12 @@ export interface Marker {
   height: number;
   color: string;
   isGeneral: boolean;
-  lowerColor: RGBColor;
-  upperColor: RGBColor;
-} 
+  functions?: PDIFunctionType[];
+  opencvParams: {
+    lowerColor: RGBColor;
+    upperColor: RGBColor;
+    tolerance?: number;
+    minArea?: number;
+    maxArea?: number;
+  };
+}
