@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { PDIFunctionType } from '../types/api';
+import { Marker } from '../types/marker';
 import type { ClientMessage, ServerMessage } from '../types/websocket';
+import { createPDIFunction } from '../utils/pdi';
 
 const WS_URL = 'ws://localhost:8000/api/v1/ws/metadata';
 
@@ -11,6 +13,66 @@ interface UseMetadataSyncProps {
   isSyncEnabled: boolean;
   onMetadataUpdate: (data: ServerMessage['data']) => void;
   selectedMarkerId: string | null;
+}
+
+interface WSRequest {
+  timestamp: number;
+  roi: {
+    position: {
+      x: number;
+      y: number;
+    };
+    size: {
+      width: number;
+      height: number;
+    };
+  };
+  pdi_functions: Array<{
+    function: string;
+    parameters: Record<string, any>;
+    output_type: string;
+  }>;
+}
+
+interface WSResponse {
+  timestamp: number;
+  video_id: string;
+  frame_info: {
+    markings?: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
+    detections?: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
+    functions?: PDIFunctionType[];
+    parameters?: {
+      color_segmentation?: {
+        lower_color: { r: number; g: number; b: number };
+        upper_color: { r: number; g: number; b: number };
+        tolerance: number;
+        min_area: number;
+        max_area: number;
+      };
+      shape_detection?: {
+        shapes: string[];
+        shape_tolerance: number;
+      };
+      template_matching?: {
+        template_image: string;
+        threshold: number;
+      };
+      people_detection?: {
+        min_area: number;
+        max_area: number;
+      };
+    };
+  };
 }
 
 export function useMetadataSync({
@@ -24,48 +86,43 @@ export function useMetadataSync({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const isConnectingRef = useRef(false);
+  const lastProcessedTimeRef = useRef<number>(0);
 
   const sendVideoTime = useCallback(() => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !videoRef.current || !selectedMarkerId) {
+    if (!wsRef.current || 
+        wsRef.current.readyState !== WebSocket.OPEN || 
+        !videoRef.current || 
+        !selectedMarkerId) {
+      return;
+    }
+
+    const currentTime = videoRef.current.currentTime;
+    if (Math.abs(currentTime - lastProcessedTimeRef.current) < 0.033) {
       return;
     }
 
     const selectedMarker = markers.find(m => m.id === selectedMarkerId);
     if (!selectedMarker) return;
 
-    const selectedFunction = selectedMarker.functions?.[0] || 'color_segmentation';
-    const parameters: Record<string, string> = {};
+    const pdiFunction = createPDIFunction(selectedMarker);
+    if (!pdiFunction) return;
 
-    if (selectedFunction === 'color_segmentation') {
-      parameters[selectedFunction] = JSON.stringify({
-        lower_color: selectedMarker.opencvParams?.lowerColor || { r: 0, g: 0, b: 0 },
-        upper_color: selectedMarker.opencvParams?.upperColor || { r: 255, g: 255, b: 255 },
-        tolerance: selectedMarker.opencvParams?.tolerance || 10,
-        min_area: String(selectedMarker.opencvParams?.minArea || 100),
-        max_area: String(selectedMarker.opencvParams?.maxArea || 10000)
-      });
-    } else {
-      parameters[selectedFunction] = JSON.stringify({
-        min_area: String(selectedMarker.opencvParams?.minArea || 1000),
-        max_area: String(selectedMarker.opencvParams?.maxArea || 60000)
-      });
-    }
-
-    const message = {
-      timestamp: Math.round(videoRef.current.currentTime * 1000),
-      frame_info: {
-        markings: [{
+    const message: WSRequest = {
+      timestamp: Math.round(currentTime * 1000),
+      roi: {
+        position: {
           x: Math.round(selectedMarker.x),
           y: Math.round(selectedMarker.y),
+        },
+        size: {
           width: Math.round(selectedMarker.width),
-          height: Math.round(selectedMarker.height)
-        }],
-        functions: [selectedFunction],
-        parameters
-      }
+          height: Math.round(selectedMarker.height),
+        }
+      },
+      pdi_functions: [pdiFunction],
     };
 
-    console.log('Sending sync message:', JSON.stringify(message, null, 2));
+    lastProcessedTimeRef.current = currentTime;
     wsRef.current.send(JSON.stringify(message));
   }, [markers, selectedMarkerId, videoRef]);
 
@@ -86,11 +143,16 @@ export function useMetadataSync({
       };
 
       wsRef.current.onmessage = (event) => {
-        console.log('Raw WebSocket message:', event.data);
         try {
-          const message = JSON.parse(event.data);
-          console.log('Parsed WebSocket message:', JSON.stringify(message, null, 2));
-          onMetadataUpdate(message.data);
+          const data = JSON.parse(event.data) as WSResponse;
+          
+          if (data.frame_info?.detections) {
+            onMetadataUpdate({
+              timestamp: data.timestamp,
+              video_id: data.video_id,
+              frame_info: data.frame_info
+            });
+          }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
         }
@@ -148,8 +210,8 @@ export function useMetadataSync({
     let intervalId: NodeJS.Timeout;
 
     if (isPlaying && isSyncEnabled && selectedMarkerId && wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('Starting sync interval...');
-      intervalId = setInterval(sendVideoTime, 1000 / 30);
+      // Ajusta a frequência de envio para aproximadamente 30fps
+      intervalId = setInterval(sendVideoTime, 33);
     }
 
     return () => {
@@ -157,7 +219,14 @@ export function useMetadataSync({
         clearInterval(intervalId);
       }
     };
-  }, [isPlaying, isSyncEnabled, sendVideoTime, selectedMarkerId, wsRef.current?.readyState]);
+  }, [isPlaying, isSyncEnabled, sendVideoTime, selectedMarkerId]);
+
+  // Adiciona um efeito para processar quando há mudança manual de frame
+  useEffect(() => {
+    if (!isPlaying && isSyncEnabled && selectedMarkerId) {
+      sendVideoTime();
+    }
+  }, [isSyncEnabled, selectedMarkerId, videoRef.current?.currentTime]);
 
   return null;
 } 

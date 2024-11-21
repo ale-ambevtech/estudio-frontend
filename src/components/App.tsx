@@ -587,17 +587,8 @@ const App: React.FC = () => {
                 processingResults={processingResults}
                 isSyncEnabled={isSyncEnabled}
                 onSyncChange={setIsSyncEnabled}
+                onProcessVideo={handleProcessVideo}
               />
-              {selectedMarkerId && (
-                <div className="flex justify-center mt-4">
-                  <button
-                    onClick={handleProcessVideo}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Processar Região Selecionada
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Timeline e Controles */}

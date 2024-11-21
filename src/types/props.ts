@@ -10,6 +10,10 @@ export interface VideoPlayerProps {
   selectMarker: (id: string) => void;
   mediaType: MediaType;
   mediaUrl: string | null;
+  processingResults: Map<string, Array<{ function: string; bounding_boxes: number[][] }>>;
+  isSyncEnabled: boolean;
+  onSyncChange: (enabled: boolean) => void;
+  onProcessVideo: () => void;
 }
 
 export interface LoadingProps {

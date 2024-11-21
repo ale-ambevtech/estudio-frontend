@@ -5,8 +5,15 @@ import { VIDEO } from '../constants/dimensions';
 import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
 import { useMetadataSync } from '../hooks/useMetadataSync';
-import type { BoundingBoxResult } from '../types/api';
+import {
+  OPENCV_FUNCTIONS,
+  OUTPUT_TYPES,
+  ProcessingResult,
+  ProcessVideoRequest,
+  type BoundingBoxResult,
+} from '../types/api';
 import type { ServerMessage } from '../types/websocket';
+import { processVideo } from '@/services/api';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -20,6 +27,7 @@ interface VideoPlayerProps {
   processingResults: Map<string, BoundingBoxResult[]>;
   isSyncEnabled: boolean;
   onSyncChange: (enabled: boolean) => void;
+  onProcessVideo: () => void;
 }
 
 interface WebSocketBoundingBox {
@@ -63,6 +71,7 @@ export function VideoPlayer({
   processingResults,
   isSyncEnabled,
   onSyncChange,
+  onProcessVideo,
 }: VideoPlayerProps) {
   console.log('VideoPlayer rendered with:', {
     markersCount: markers.length,
@@ -466,6 +475,13 @@ export function VideoPlayer({
           <span className="ml-2 text-sm text-gray-600">Sync</span>
         </label>
       </div>
+      {selectedMarkerId && !isSyncEnabled && (
+        <div className="flex justify-center mt-4">
+          <button onClick={onProcessVideo} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Processar Região Selecionada
+          </button>
+        </div>
+      )}
     </div>
   );
 }
