@@ -47,13 +47,6 @@ export function VideoPlayer({
   onProcessVideo,
   onFpsChange,
 }: VideoPlayerProps) {
-  console.log('VideoPlayer rendered with:', {
-    markersCount: markers.length,
-    selectedMarkerId,
-    hasResults: !!processingResults?.size,
-    processingResults,
-  });
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -78,14 +71,11 @@ export function VideoPlayer({
 
   useEffect(() => {
     wsBoxesRef.current = wsBoxes;
-    console.log('WebSocket boxes updated:', wsBoxes);
   }, [wsBoxes]);
 
   const onMetadataUpdate = useCallback(
     (data: ServerMessage['data']) => {
       if (!data || !selectedMarkerId) return;
-
-      console.log('Received metadata update:', data);
 
       const detections = data.frame_info.detections || [];
       if (detections.length > 0) {
@@ -102,7 +92,6 @@ export function VideoPlayer({
         setSyncResults((prev) => {
           const newResults = new Map(prev);
           newResults.set(selectedMarkerId, [result]);
-          console.log('Updated sync results:', newResults);
           return newResults;
         });
       }
@@ -125,7 +114,6 @@ export function VideoPlayer({
 
     const newFps = calculateFps(video);
     onFpsChange(newFps);
-    console.log('Calculated FPS:', newFps);
   }, [videoRef, onFpsChange]);
 
   useEffect(() => {
@@ -134,10 +122,7 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    console.log('Setting up video with URL:', mediaUrl);
-
     const handleLoadedMetadata = () => {
-      console.log('Video loadedmetadata event fired');
       const { width: scaledWidth, height: scaledHeight } = calculateScaledDimensions(
         video.videoWidth,
         video.videoHeight
@@ -154,7 +139,6 @@ export function VideoPlayer({
     };
 
     const handleLoaded = () => {
-      console.log('Video loadeddata event fired');
       setIsMediaLoaded(true);
       setIsVideoReady(true);
     };
@@ -200,15 +184,12 @@ export function VideoPlayer({
 
   useEffect(() => {
     if (mediaType === 'image' && mediaUrl) {
-      console.log('Loading image:', mediaUrl);
       const img = new Image();
       img.onload = () => {
-        console.log('Image loaded successfully. Dimensions:', img.width, 'x', img.height);
         const dimensions = {
           width: Math.min(img.width, VIDEO.MAX_WIDTH),
           height: Math.min(img.height, VIDEO.MAX_HEIGHT),
         };
-        console.log('Calculated dimensions:', dimensions);
         setVideoDimensions(dimensions);
         setCanvasSize(dimensions);
         onDimensionsChange(dimensions);
@@ -254,8 +235,6 @@ export function VideoPlayer({
         const selectedMarker = markers.find((m) => m.id === selectedMarkerId);
 
         if (selectedMarker && results?.[0]) {
-          console.log(`Drawing ${isSyncEnabled ? 'sync' : 'processing'} results:`, results[0]);
-
           ctx.strokeStyle = selectedMarker.color;
           ctx.lineWidth = 2;
 
@@ -315,20 +294,6 @@ export function VideoPlayer({
   // Atualizar quando os resultados mudarem
   useEffect(() => {
     if (!processingResults?.size) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-
-    if (ctx) {
-      drawFrame(ctx);
-    }
-  }, [processingResults, drawFrame]);
-
-  useEffect(() => {
-    console.log('Processing results updated:', {
-      hasResults: !!processingResults?.size,
-      results: processingResults,
-    });
 
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -425,14 +390,7 @@ export function VideoPlayer({
   }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor]);
 
   // Adicionar useEffect para monitorar mudanças nas props
-  useEffect(() => {
-    console.log('Props updated:', {
-      markersCount: markers.length,
-      selectedMarkerId,
-      hasResults: !!processingResults?.size,
-      processingResults,
-    });
-  }, [markers, selectedMarkerId, processingResults]);
+  useEffect(() => {}, [markers, selectedMarkerId, processingResults]);
 
   return (
     <div className="relative">

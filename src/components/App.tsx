@@ -493,15 +493,6 @@ const App: React.FC = () => {
   // Adicionar este seletor para obter o marcador selecionado
   const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
 
-  useEffect(() => {
-    console.log('6. Processing results state updated:', processingResults);
-  }, [processingResults]);
-
-  // Adicionar useEffect para monitorar mudanças nos resultados
-  useEffect(() => {
-    console.log('Processing results changed:', processingResults);
-  }, [processingResults]);
-
   return (
     <div className="min-h-screen bg-gray-800">
       <div className="container mx-auto p-4 grid grid-cols-[280px_1fr_280px] gap-6">
