@@ -6,7 +6,6 @@ import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
 import { useMetadataSync } from '../hooks/useMetadataSync';
 import { type BoundingBoxResult } from '../types/api';
-import type { ServerMessage } from '../types/websocket';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -237,23 +236,22 @@ export function VideoPlayer({
         ctx.strokeRect(marker.x, marker.y, marker.width, marker.height);
       });
 
-      // Desenhar resultados do processamento
-      if (selectedMarkerId) {
-        const results = isSyncEnabled ? syncResults.get(selectedMarkerId) : processingResults.get(selectedMarkerId);
-        const selectedMarker = markers.find((m) => m.id === selectedMarkerId);
+      // Desenhar resultados do processamento para todos os marcadores
+      markers.forEach((marker) => {
+        const results = isSyncEnabled ? syncResults.get(marker.id) : processingResults.get(marker.id);
 
-        if (selectedMarker && results?.[0]) {
-          ctx.strokeStyle = selectedMarker.color;
-          ctx.lineWidth = 2;
+        if (marker && results?.[0]) {
+          ctx.strokeStyle = marker.color;
+          ctx.lineWidth = marker.id === selectedMarkerId ? 2 : 1;
 
           results[0].bounding_boxes.forEach((box) => {
             const [x, y, width, height] = box;
             ctx.beginPath();
-            ctx.rect(selectedMarker.x + x, selectedMarker.y + y, width, height);
+            ctx.rect(marker.x + x, marker.y + y, width, height);
             ctx.stroke();
           });
         }
-      }
+      });
 
       // Adicionar desenho do retângulo temporário
       if (isDrawing && currentRect) {

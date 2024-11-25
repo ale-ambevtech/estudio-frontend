@@ -13,6 +13,7 @@ import { VideoControls } from './VideoControls';
 import { processVideo, uploadVideo } from '../services/api';
 import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult } from '../types/api';
 import { Loading } from './Loading';
+import { createDefaultMarker } from '../utils/marker-utils';
 
 interface VideoDimensions {
   width: number;
@@ -31,17 +32,20 @@ const App: React.FC = () => {
       try {
         const parsedMarkers = JSON.parse(savedMarkers);
         if (Array.isArray(parsedMarkers) && parsedMarkers.length > 0) {
-          console.log('Loaded markers from localStorage:', parsedMarkers);
-          const generalMarker = parsedMarkers.find((m) => m.isGeneral) || {
-            id: 'general',
-            name: 'Quadro Geral',
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            color: '#ffc400',
-            isGeneral: true,
-          };
+          const generalMarker =
+            parsedMarkers.find((m) => m.isGeneral) ||
+            createDefaultMarker(0, 0, 640, 480, 'Quadro Geral', '#ffc400', true, 'general');
+
+          if (!generalMarker.opencvParams) {
+            generalMarker.opencvParams = {
+              lowerColor: { r: 0, g: 0, b: 0 },
+              upperColor: { r: 255, g: 255, b: 255 },
+              tolerance: 10,
+              minArea: 100,
+              maxArea: 10000,
+            };
+          }
+
           const otherMarkers = parsedMarkers.filter((m) => !m.isGeneral);
           return [generalMarker, ...otherMarkers];
         }
@@ -49,19 +53,7 @@ const App: React.FC = () => {
         console.error('Error parsing saved markers:', error);
       }
     }
-    console.log('No markers found in localStorage, starting with default general marker');
-    return [
-      {
-        id: 'general',
-        name: 'Quadro Geral',
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-        color: '#ffc400',
-        isGeneral: true,
-      },
-    ];
+    return [createDefaultMarker(0, 0, 640, 480, 'Quadro Geral', '#ffc400', true, 'general')];
   });
 
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
@@ -69,7 +61,7 @@ const App: React.FC = () => {
   const isInitializingRef = useRef(true);
   const savedPositionRef = useRef<number | null>(null);
 
-  const [videoDimensions, setVideoDimensions] = useState<VideoDimensions>({ width: 0, height: 0 });
+  const [, setVideoDimensions] = useState<VideoDimensions>({ width: 0, height: 0 });
 
   const [mediaUrl, setMediaUrl] = useState<string | null>(() => {
     const savedMedia = localStorage.getItem('mediaUrl');
@@ -163,23 +155,18 @@ const App: React.FC = () => {
   }, []);
 
   const updateMarker = useCallback((updatedMarker: Marker) => {
+    console.log('Updating marker with:', updatedMarker);
     setMarkers((prevMarkers) => {
-      const newMarkers = prevMarkers.map((m) => (m.id === updatedMarker.id ? updatedMarker : m));
-      // Ensure the general marker is always the first one
-      const generalMarker = newMarkers.find((m) => m.isGeneral) || {
-        id: 'general',
-        name: 'Quadro Geral',
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-        color: '#ffc400',
-        isGeneral: true,
-      };
-      const otherMarkers = newMarkers.filter((m) => !m.isGeneral);
-      return [generalMarker, ...otherMarkers];
+      const newMarkers = prevMarkers.map((m) => {
+        if (m.id === updatedMarker.id) {
+          console.log('Found marker to update:', m);
+          console.log('Updated to:', updatedMarker);
+          return updatedMarker;
+        }
+        return m;
+      });
+      return newMarkers;
     });
-    console.log('Updating marker:', updatedMarker);
   }, []);
 
   const deleteMarker = useCallback((id: string) => {
@@ -231,38 +218,13 @@ const App: React.FC = () => {
   }, []);
 
   const resetMarkers = useCallback(() => {
-    setMarkers((prevMarkers) => {
-      // Preserve the current general marker, but reset its OpenCV function and parameters
-      const generalMarker = prevMarkers.find((m) => m.isGeneral);
-      if (!generalMarker) {
-        // Fallback if somehow there's no general marker
-        return [
-          {
-            id: 'general',
-            name: 'Quadro Geral',
-            x: 0,
-            y: 0,
-            width: videoDimensions.width,
-            height: videoDimensions.height,
-            color: '#ffc400',
-            isGeneral: true,
-            opencvFunction: undefined, // Reset OpenCV function
-            opencvParams: undefined, // Reset OpenCV parameters
-          },
-        ];
-      }
-      // Return array with only the general marker, resetting its OpenCV properties
-      return [
-        {
-          ...generalMarker,
-          opencvFunction: undefined, // Reset OpenCV function
-          opencvParams: undefined, // Reset OpenCV parameters
-        },
-      ];
+    setMarkers(() => {
+      const generalMarker = createDefaultMarker(0, 0, 640, 480, 'Quadro Geral', '#ffc400', true, 'general');
+      return [generalMarker];
     });
     setSelectedMarkerId(null);
-    console.log('Reset markers while preserving general marker and resetting its OpenCV properties');
-  }, [videoDimensions]);
+    console.log('Reset markers while preserving general marker with default OpenCV properties');
+  }, []);
 
   const handleVideoDimensionsChange = useCallback((dimensions: VideoDimensions) => {
     setVideoDimensions(dimensions);

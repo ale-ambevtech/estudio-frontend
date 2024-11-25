@@ -1,7 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { PDIFunctionType } from '../types/api';
-import { Marker } from '../types/marker';
-import type { ClientMessage, ServerMessage } from '../types/websocket';
+import type { ServerMessage } from '../types/websocket';
 import { createPDIFunction } from '../utils/pdi';
 
 const WS_URL = 'ws://localhost:8000/api/v1/ws/metadata';
@@ -16,65 +14,7 @@ interface UseMetadataSyncProps {
   isDebugEnabled: boolean;
 }
 
-interface WSRequest {
-  timestamp: number;
-  roi: {
-    position: {
-      x: number;
-      y: number;
-    };
-    size: {
-      width: number;
-      height: number;
-    };
-  };
-  pdi_functions: Array<{
-    function: string;
-    parameters: Record<string, any>;
-    output_type: string;
-  }>;
-}
 
-interface WSResponse {
-  timestamp: number;
-  video_id: string;
-  frame_info: {
-    markings?: Array<{
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }>;
-    detections?: Array<{
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }>;
-    functions?: PDIFunctionType[];
-    parameters?: {
-      color_segmentation?: {
-        lower_color: { r: number; g: number; b: number };
-        upper_color: { r: number; g: number; b: number };
-        tolerance: number;
-        min_area: number;
-        max_area: number;
-      };
-      shape_detection?: {
-        shapes: string[];
-        shape_tolerance: number;
-      };
-      template_matching?: {
-        template_image: string;
-        threshold: number;
-      };
-      people_detection?: {
-        min_area: number;
-        max_area: number;
-      };
-    };
-  };
-}
 
 export function useMetadataSync({
   isPlaying,
@@ -176,12 +116,26 @@ export function useMetadataSync({
 
     const currentTime = Math.floor(videoRef.current.currentTime * 1000);
     if (currentTime === lastProcessedTimeRef.current) return;
-    
-    const selectedMarker = markers.find(m => m.id === selectedMarkerId);
-    if (!selectedMarker) return;
 
-    const pdiFunction = createPDIFunction(selectedMarker);
-    if (!pdiFunction) return;
+    const markerToProcess = markers.find(m => m.id === selectedMarkerId);
+    
+    isDebugEnabled && console.log('Marker details:', {
+      id: markerToProcess?.id,
+      opencvFunction: markerToProcess?.opencvFunction,
+      opencvParams: markerToProcess?.opencvParams,
+      allProperties: markerToProcess
+    });
+
+    if (!markerToProcess) return;
+
+    const pdiFunction = createPDIFunction(markerToProcess);
+    if (!pdiFunction) {
+      isDebugEnabled && console.log('No PDI function created. PDI Function details:', {
+        markerFunction: markerToProcess.opencvFunction,
+        markerParams: markerToProcess.opencvParams
+      });
+      return;
+    }
 
     try {
       const message = {
@@ -189,12 +143,12 @@ export function useMetadataSync({
         pdi_functions: [pdiFunction],
         roi: {
           position: {
-            x: Math.round(selectedMarker.x),
-            y: Math.round(selectedMarker.y)
+            x: Math.round(markerToProcess.x),
+            y: Math.round(markerToProcess.y)
           },
           size: {
-            width: Math.round(selectedMarker.width),
-            height: Math.round(selectedMarker.height)
+            width: Math.round(markerToProcess.width),
+            height: Math.round(markerToProcess.height)
           }
         }
       };

@@ -1,15 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Marker } from '../types';
-import type { RGBColor } from '../types/api';
 
-function hexToRgb(hex: string): RGBColor {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : { r: 0, g: 0, b: 0 };
-}
 
 export function createDefaultMarker(
   x: number,
@@ -18,10 +9,11 @@ export function createDefaultMarker(
   height: number,
   name: string,
   color: string,
-  isGeneral: boolean = false
+  isGeneral: boolean = false,
+  id?: string
 ): Marker {
   return {
-    id: uuidv4(),
+    id: id || uuidv4(),
     name,
     x,
     y,
