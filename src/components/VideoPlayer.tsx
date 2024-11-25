@@ -267,8 +267,25 @@ export function VideoPlayer({
           });
         }
       }
+
+      // Adicionar desenho do retângulo temporário
+      if (isDrawing && currentRect) {
+        ctx.strokeStyle = '#00ff00'; // ou use a cor que preferir
+        ctx.lineWidth = 2;
+        ctx.strokeRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
+      }
     },
-    [markers, selectedMarkerId, processingResults, syncResults, isSyncEnabled, mediaType, videoRef]
+    [
+      markers,
+      selectedMarkerId,
+      processingResults,
+      syncResults,
+      isSyncEnabled,
+      mediaType,
+      videoRef,
+      isDrawing,
+      currentRect,
+    ]
   );
 
   // Consolidar os useEffects de renderização
@@ -359,16 +376,26 @@ export function VideoPlayer({
     setStartPoint({ x, y });
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !startPoint) return;
-    const { x, y } = getCanvasMousePosition(e);
-    setCurrentRect({
-      x: startPoint.x,
-      y: startPoint.y,
-      width: x - startPoint.x,
-      height: y - startPoint.y,
-    });
-  };
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDrawing || !startPoint) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      setCurrentRect({
+        x: Math.min(startPoint.x, x),
+        y: Math.min(startPoint.y, y),
+        width: Math.abs(x - startPoint.x),
+        height: Math.abs(y - startPoint.y),
+      });
+    },
+    [isDrawing, startPoint]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (!isDrawing || !startPoint || !currentRect) return;
