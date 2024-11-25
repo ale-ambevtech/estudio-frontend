@@ -12,7 +12,8 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
   const [currentTime, setCurrentTime] = useState<number>(0);
 
   useEffect(() => {
-    const video = videoRef.current!;
+    const video = videoRef.current;
+    if (!video) return;
 
     const handleLoadedMetadata = () => {
       if (video.duration && isFinite(video.duration)) {
@@ -26,14 +27,19 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
       setCurrentTime(video.currentTime);
     };
 
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    if (video.readyState >= 1) {
+      handleLoadedMetadata();
+    } else {
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    }
+
     video.addEventListener('timeupdate', updateCurrentTime);
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('timeupdate', updateCurrentTime);
     };
-  }, [videoRef]);
+  }, [videoRef.current]);
 
   const generateThumbnails = (videoDuration: number) => {
     const video = videoRef.current!;
