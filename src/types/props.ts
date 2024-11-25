@@ -1,5 +1,5 @@
 import type { Marker } from './marker';
-import type { MediaType, MediaMetadata } from './media';
+import type { MediaType } from './media';
 
 export interface VideoPlayerProps {
   markers: Marker[];
@@ -14,6 +14,8 @@ export interface VideoPlayerProps {
   isSyncEnabled: boolean;
   onSyncChange: (enabled: boolean) => void;
   onProcessVideo: () => void;
+  fps: number;
+  onFpsChange: (fps: number) => void;
 }
 
 export interface LoadingProps {

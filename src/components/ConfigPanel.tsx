@@ -1,5 +1,5 @@
 import React from 'react';
-import { Marker } from '../types';
+import { Marker } from '../types/marker';
 import { Slider } from 'primereact/slider';
 import { InputNumber } from 'primereact/inputnumber';
 import { rgbToHex, hexToRgb } from '../utils/colors';

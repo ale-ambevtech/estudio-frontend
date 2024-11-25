@@ -1,4 +1,4 @@
-import { Marker } from '../types';
+import { Marker } from '../types/marker';
 
 interface SidebarProps {
   markers: Marker[];

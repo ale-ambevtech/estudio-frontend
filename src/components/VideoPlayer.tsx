@@ -1,19 +1,12 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Marker } from '../types';
+import { Marker } from '../types/marker';
 import { v4 as uuidv4 } from 'uuid';
 import { VIDEO } from '../constants/dimensions';
 import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
 import { useMetadataSync } from '../hooks/useMetadataSync';
-import {
-  OPENCV_FUNCTIONS,
-  OUTPUT_TYPES,
-  ProcessingResult,
-  ProcessVideoRequest,
-  type BoundingBoxResult,
-} from '../types/api';
+import { type BoundingBoxResult } from '../types/api';
 import type { ServerMessage } from '../types/websocket';
-import { processVideo } from '@/services/api';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -28,6 +21,8 @@ interface VideoPlayerProps {
   isSyncEnabled: boolean;
   onSyncChange: (enabled: boolean) => void;
   onProcessVideo: () => void;
+  fps: number;
+  onFpsChange: (fps: number) => void;
 }
 
 interface WebSocketBoundingBox {
@@ -35,28 +30,6 @@ interface WebSocketBoundingBox {
   y: number;
   width: number;
   height: number;
-}
-
-interface FrameInfo {
-  markings?: Array<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-  detections?: Array<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-  // outros campos possíveis
-}
-
-interface MetadataResponse {
-  timestamp: number;
-  video_id: string;
-  frame_info: FrameInfo;
 }
 
 export function VideoPlayer({
@@ -72,6 +45,7 @@ export function VideoPlayer({
   isSyncEnabled,
   onSyncChange,
   onProcessVideo,
+  onFpsChange,
 }: VideoPlayerProps) {
   console.log('VideoPlayer rendered with:', {
     markersCount: markers.length,
@@ -82,8 +56,6 @@ export function VideoPlayer({
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationFrameRef = useRef<number>();
-  const isFirstRender = useRef(true);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -94,14 +66,13 @@ export function VideoPlayer({
     height: number;
   } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [fps, setFps] = useState(30);
   const [markerCount, setMarkerCount] = useState(0);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [, setIsVideoReady] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [isMediaLoaded, setIsMediaLoaded] = useState(false);
-  const [wsBoxes, setWsBoxes] = useState<WebSocketBoundingBox[]>([]);
+  const [, setImage] = useState<HTMLImageElement | null>(null);
+  const [, setIsMediaLoaded] = useState(false);
+  const [wsBoxes] = useState<WebSocketBoundingBox[]>([]);
   const wsBoxesRef = useRef<WebSocketBoundingBox[]>([]);
   const [syncResults, setSyncResults] = useState<Map<string, BoundingBoxResult[]>>(new Map());
 
@@ -110,7 +81,7 @@ export function VideoPlayer({
     console.log('WebSocket boxes updated:', wsBoxes);
   }, [wsBoxes]);
 
-  const handleMetadataUpdate = useCallback(
+  const onMetadataUpdate = useCallback(
     (data: ServerMessage['data']) => {
       if (!data || !selectedMarkerId) return;
 
@@ -144,7 +115,7 @@ export function VideoPlayer({
     videoRef,
     markers,
     isSyncEnabled,
-    onMetadataUpdate: handleMetadataUpdate,
+    onMetadataUpdate,
     selectedMarkerId,
   });
 
@@ -153,9 +124,9 @@ export function VideoPlayer({
     if (!video) return;
 
     const newFps = calculateFps(video);
-    setFps(newFps);
+    onFpsChange(newFps);
     console.log('Calculated FPS:', newFps);
-  }, [videoRef]);
+  }, [videoRef, onFpsChange]);
 
   useEffect(() => {
     if (!mediaUrl || mediaType !== 'video') return;
@@ -205,7 +176,6 @@ export function VideoPlayer({
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      console.log('Video loadedmetadata event fired');
       handleFpsCalculation();
 
       const { width: scaledWidth, height: scaledHeight } = calculateScaledDimensions(
@@ -301,7 +271,7 @@ export function VideoPlayer({
     [markers, selectedMarkerId, processingResults, syncResults, isSyncEnabled, mediaType, videoRef]
   );
 
-  // Use um único useEffect para o loop de renderização
+  // Consolidar os useEffects de renderização
   useEffect(() => {
     let animationFrame: number;
 
@@ -325,14 +295,14 @@ export function VideoPlayer({
     };
   }, [drawFrame]);
 
+  // Atualizar quando os resultados mudarem
   useEffect(() => {
-    console.log('Processing results updated');
+    if (!processingResults?.size) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
 
     if (ctx) {
-      // Renderizar apenas uma vez, sem iniciar loop
       drawFrame(ctx);
     }
   }, [processingResults, drawFrame]);

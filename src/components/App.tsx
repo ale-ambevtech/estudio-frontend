@@ -3,15 +3,15 @@ import Sidebar from './Sidebar';
 import VideoPlayer from './VideoPlayer';
 import Timeline from './Timeline';
 import ConfigPanel from './ConfigPanel';
-import { Marker } from '../types';
+import { Marker } from '../types/marker';
 import '../styles/global.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 import { VideoControls } from './VideoControls';
-import { uploadVideo, processVideo } from '../services/api';
-import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult, RGBColor } from '../types/api';
+import { processVideo, uploadVideo } from '../services/api';
+import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult } from '../types/api';
 import { Loading } from './Loading';
 
 interface VideoDimensions {
@@ -19,12 +19,6 @@ interface VideoDimensions {
   height: number;
 }
 
-interface ColorRange {
-  lower: RGBColor;
-  upper: RGBColor;
-}
-
-// Definir interface para o formato específico dos resultados
 interface BoundingBoxResult {
   function: string;
   bounding_boxes: number[][];
@@ -38,7 +32,6 @@ const App: React.FC = () => {
         const parsedMarkers = JSON.parse(savedMarkers);
         if (Array.isArray(parsedMarkers) && parsedMarkers.length > 0) {
           console.log('Loaded markers from localStorage:', parsedMarkers);
-          // Ensure the general marker is always the first one
           const generalMarker = parsedMarkers.find((m) => m.isGeneral) || {
             id: 'general',
             name: 'Quadro Geral',
@@ -100,11 +93,6 @@ const App: React.FC = () => {
 
   const [fps, setFps] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
-
-  const [selectedColors, setSelectedColors] = useState<ColorRange>({
-    lower: { r: 0, g: 0, b: 0 },
-    upper: { r: 255, g: 255, b: 255 },
-  });
 
   const [processingResults, setProcessingResults] = useState<Map<string, BoundingBoxResult[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
@@ -226,30 +214,6 @@ const App: React.FC = () => {
     console.log('Current markers:', markers);
   }, [markers]);
 
-  const exportRecipe = () => {
-    const recipe = {
-      markers: markers.map(({ id, x, y, width, height, color, opencvFunction, opencvParams }) => ({
-        id,
-        x,
-        y,
-        width,
-        height,
-        color,
-        opencvFunction,
-        opencvParams,
-      })),
-    };
-
-    const json = JSON.stringify(recipe, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'recipe.json';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleSeek = (time: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime = time;
@@ -300,9 +264,6 @@ const App: React.FC = () => {
   }, [videoDimensions]);
 
   const handleVideoDimensionsChange = useCallback((dimensions: VideoDimensions) => {
-    // Adicione um log aqui também
-    console.log('Received dimensions in App:', dimensions);
-
     setVideoDimensions(dimensions);
     setMarkers((prevMarkers) => {
       const updatedGeneralMarker = {
@@ -310,9 +271,6 @@ const App: React.FC = () => {
         width: dimensions.width,
         height: dimensions.height,
       };
-      // Log do marcador atualizado
-      console.log('Updated general marker:', updatedGeneralMarker);
-
       return [updatedGeneralMarker, ...prevMarkers.slice(1)];
     });
   }, []);
@@ -323,11 +281,8 @@ const App: React.FC = () => {
 
     try {
       setIsLoading(true);
-      // Upload para o backend
-      const metadata = await uploadVideo(file);
-      console.log('Video uploaded successfully:', metadata);
+      await uploadVideo(file);
 
-      // Criar URL local para preview
       if (mediaUrl) {
         URL.revokeObjectURL(mediaUrl);
       }
@@ -341,8 +296,7 @@ const App: React.FC = () => {
       localStorage.setItem('mediaType', type);
       await saveMedia('currentMedia', file);
     } catch (error) {
-      console.error('Error uploading video:', error);
-      // Adicione aqui tratamento de erro adequado
+      console.error('Error uploading media:', error);
     } finally {
       setIsLoading(false);
     }
@@ -588,6 +542,8 @@ const App: React.FC = () => {
                 isSyncEnabled={isSyncEnabled}
                 onSyncChange={setIsSyncEnabled}
                 onProcessVideo={handleProcessVideo}
+                fps={fps}
+                onFpsChange={setFps}
               />
             </div>
 
