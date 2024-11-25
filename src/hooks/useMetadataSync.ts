@@ -85,8 +85,68 @@ export function useMetadataSync({
 }: UseMetadataSyncProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  const isConnectingRef = useRef(false);
   const lastProcessedTimeRef = useRef<number>(0);
+
+  // Função para limpar completamente o WebSocket
+  const cleanupWebSocket = useCallback(() => {
+    if (wsRef.current) {
+      // Remove todos os listeners antes de fechar
+      wsRef.current.onclose = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.onopen = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+  }, []);
+
+  const connect = useCallback(() => {
+    if (!isSyncEnabled || wsRef.current) return;
+
+    try {
+      cleanupWebSocket(); // Garante que não há conexão anterior
+      
+      wsRef.current = new WebSocket(WS_URL);
+      
+      wsRef.current.onopen = () => {
+        console.log('Sync WebSocket connected');
+      };
+
+      wsRef.current.onclose = (event) => {
+        // Só reconecta se o sync ainda estiver ativo
+        if (isSyncEnabled && !event.wasClean) {
+          wsRef.current = null;
+          reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        } else {
+          cleanupWebSocket();
+        }
+      };
+
+      wsRef.current.onmessage = (event) => {
+        if (onMetadataUpdate) {
+          const data = JSON.parse(event.data);
+          onMetadataUpdate(data);
+        }
+      };
+    } catch (error) {
+      console.error('WebSocket connection error:', error);
+      cleanupWebSocket();
+    }
+  }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocket]);
+
+  // Effect para gerenciar o ciclo de vida do WebSocket
+  useEffect(() => {
+    if (isSyncEnabled) {
+      connect();
+    } else {
+      cleanupWebSocket();
+    }
+
+    return cleanupWebSocket;
+  }, [isSyncEnabled, connect, cleanupWebSocket]);
 
   const sendVideoTime = useCallback(() => {
     if (!wsRef.current || 
@@ -125,86 +185,6 @@ export function useMetadataSync({
     lastProcessedTimeRef.current = currentTime;
     wsRef.current.send(JSON.stringify(message));
   }, [markers, selectedMarkerId, videoRef]);
-
-  const connect = useCallback(() => {
-    if (isConnectingRef.current || !isSyncEnabled) {
-      console.log('Skipping connection - already connecting or sync disabled');
-      return;
-    }
-
-    try {
-      console.log('Initializing WebSocket connection...');
-      isConnectingRef.current = true;
-      wsRef.current = new WebSocket(WS_URL);
-
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connected successfully');
-        isConnectingRef.current = false;
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as WSResponse;
-          
-          if (data.frame_info?.detections) {
-            onMetadataUpdate({
-              timestamp: data.timestamp,
-              video_id: data.video_id,
-              frame_info: data.frame_info
-            });
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-        }
-      };
-
-      wsRef.current.onclose = () => {
-        console.log('WebSocket disconnected, attempting reconnect...');
-        wsRef.current = null;
-        isConnectingRef.current = false;
-        if (isSyncEnabled) {
-          reconnectTimeoutRef.current = setTimeout(connect, 1000);
-        }
-      };
-
-      wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        wsRef.current?.close();
-      };
-
-    } catch (error) {
-      console.error('Error in WebSocket setup:', error);
-      isConnectingRef.current = false;
-      wsRef.current = null;
-    }
-  }, [isSyncEnabled, onMetadataUpdate]);
-
-  useEffect(() => {
-    if (isSyncEnabled) {
-      console.log('Sync enabled, connecting WebSocket...');
-      connect();
-    } else {
-      console.log('Sync disabled, closing WebSocket...');
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    }
-
-    return () => {
-      console.log('Cleaning up WebSocket...');
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
-  }, [isSyncEnabled, connect]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
