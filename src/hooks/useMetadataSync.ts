@@ -86,11 +86,11 @@ export function useMetadataSync({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const lastProcessedTimeRef = useRef<number>(0);
+  const isConnectedRef = useRef<boolean>(false);
 
-  // Função para limpar completamente o WebSocket
   const cleanupWebSocket = useCallback(() => {
+    isConnectedRef.current = false;
     if (wsRef.current) {
-      // Remove todos os listeners antes de fechar
       wsRef.current.onclose = null;
       wsRef.current.onmessage = null;
       wsRef.current.onopen = null;
@@ -107,16 +107,19 @@ export function useMetadataSync({
     if (!isSyncEnabled || wsRef.current) return;
 
     try {
-      cleanupWebSocket(); // Garante que não há conexão anterior
+      cleanupWebSocket();
+      console.log('Connecting to WebSocket...');
       
       wsRef.current = new WebSocket(WS_URL);
       
       wsRef.current.onopen = () => {
-        console.log('Sync WebSocket connected');
+        console.log('WebSocket connected successfully');
+        isConnectedRef.current = true;
       };
 
       wsRef.current.onclose = (event) => {
-        // Só reconecta se o sync ainda estiver ativo
+        console.log('WebSocket closed:', event);
+        isConnectedRef.current = false;
         if (isSyncEnabled && !event.wasClean) {
           wsRef.current = null;
           reconnectTimeoutRef.current = setTimeout(connect, 3000);
@@ -126,18 +129,28 @@ export function useMetadataSync({
       };
 
       wsRef.current.onmessage = (event) => {
+        console.log('WebSocket message received:', event.data);
         if (onMetadataUpdate) {
-          const data = JSON.parse(event.data);
-          onMetadataUpdate(data);
+          try {
+            const data = JSON.parse(event.data);
+            console.log('Parsed WebSocket data:', data);
+            onMetadataUpdate(data);
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
         }
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
       };
     } catch (error) {
       console.error('WebSocket connection error:', error);
+      isConnectedRef.current = false;
       cleanupWebSocket();
     }
   }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocket]);
 
-  // Effect para gerenciar o ciclo de vida do WebSocket
   useEffect(() => {
     if (isSyncEnabled) {
       connect();
@@ -149,42 +162,48 @@ export function useMetadataSync({
   }, [isSyncEnabled, connect, cleanupWebSocket]);
 
   const sendVideoTime = useCallback(() => {
-    if (!wsRef.current || 
-        wsRef.current.readyState !== WebSocket.OPEN || 
-        !videoRef.current || 
-        !selectedMarkerId) {
+    if (!wsRef.current || !isConnectedRef.current || !videoRef.current || !selectedMarkerId) {
+      console.log('Skipping send, conditions not met:', {
+        hasWs: !!wsRef.current,
+        isConnected: isConnectedRef.current,
+        hasVideo: !!videoRef.current,
+        markerId: selectedMarkerId
+      });
       return;
     }
 
-    const currentTime = videoRef.current.currentTime;
-    if (Math.abs(currentTime - lastProcessedTimeRef.current) < 0.033) {
-      return;
-    }
-
+    const currentTime = Math.floor(videoRef.current.currentTime * 1000);
+    if (currentTime === lastProcessedTimeRef.current) return;
+    
     const selectedMarker = markers.find(m => m.id === selectedMarkerId);
     if (!selectedMarker) return;
 
     const pdiFunction = createPDIFunction(selectedMarker);
     if (!pdiFunction) return;
 
-    const message: WSRequest = {
-      timestamp: Math.round(currentTime * 1000),
-      roi: {
-        position: {
-          x: Math.round(selectedMarker.x),
-          y: Math.round(selectedMarker.y),
-        },
-        size: {
-          width: Math.round(selectedMarker.width),
-          height: Math.round(selectedMarker.height),
+    try {
+      const message = {
+        timestamp: currentTime,
+        pdi_functions: [pdiFunction],
+        roi: {
+          position: {
+            x: Math.round(selectedMarker.x),
+            y: Math.round(selectedMarker.y)
+          },
+          size: {
+            width: Math.round(selectedMarker.width),
+            height: Math.round(selectedMarker.height)
+          }
         }
-      },
-      pdi_functions: [pdiFunction],
-    };
+      };
 
-    lastProcessedTimeRef.current = currentTime;
-    wsRef.current.send(JSON.stringify(message));
-  }, [markers, selectedMarkerId, videoRef]);
+      console.log('Sending WS message:', JSON.stringify(message, null, 2));
+      wsRef.current.send(JSON.stringify(message));
+      lastProcessedTimeRef.current = currentTime;
+    } catch (error) {
+      console.error('Error sending WebSocket message:', error);
+    }
+  }, [markers, selectedMarkerId]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;

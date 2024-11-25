@@ -74,27 +74,30 @@ export function VideoPlayer({
   }, [wsBoxes]);
 
   const onMetadataUpdate = useCallback(
-    (data: ServerMessage['data']) => {
-      if (!data || !selectedMarkerId) return;
-
-      const detections = data.frame_info.detections || [];
-      if (detections.length > 0) {
-        const result: BoundingBoxResult = {
-          function: data.frame_info.functions?.[0] || 'color_segmentation',
-          bounding_boxes: detections.map((d) => [
-            Math.round(d.x),
-            Math.round(d.y),
-            Math.round(d.width),
-            Math.round(d.height),
-          ]),
-        };
-
-        setSyncResults((prev) => {
-          const newResults = new Map(prev);
-          newResults.set(selectedMarkerId, [result]);
-          return newResults;
-        });
+    (wsResponse: any) => {
+      console.log('VideoPlayer received metadata update:', wsResponse);
+      if (!wsResponse?.data?.results || !selectedMarkerId) {
+        console.log('Skipping update, no results or selectedMarkerId');
+        return;
       }
+
+      const firstResult = wsResponse.data.results[0];
+      if (!firstResult?.bounding_boxes) {
+        console.log('No bounding boxes in result');
+        return;
+      }
+
+      console.log('Setting sync results with:', firstResult);
+      setSyncResults((prev) => {
+        const newResults = new Map(prev);
+        newResults.set(selectedMarkerId, [
+          {
+            function: firstResult.function,
+            bounding_boxes: firstResult.bounding_boxes,
+          },
+        ]);
+        return newResults;
+      });
     },
     [selectedMarkerId]
   );
