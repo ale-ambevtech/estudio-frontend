@@ -10,7 +10,8 @@ export function createDefaultMarker(
   name: string,
   color: string,
   isGeneral: boolean = false,
-  id?: string
+  id?: string,
+  withDefaults: boolean = true
 ): Marker {
   return {
     id: id || uuidv4(),
@@ -21,14 +22,14 @@ export function createDefaultMarker(
     height,
     color,
     isGeneral,
-    opencvFunction: 'colorSegmentation',
-    opencvParams: {
+    opencvFunction: withDefaults ? 'colorSegmentation' : undefined,
+    opencvParams: withDefaults ? {
       lowerColor: { r: 0, g: 0, b: 0 },
       upperColor: { r: 255, g: 255, b: 255 },
       tolerance: 10,
       minArea: 100,
       maxArea: 10000
-    }
+    } : undefined
   };
 }
 

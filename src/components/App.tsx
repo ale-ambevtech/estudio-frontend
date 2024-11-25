@@ -219,11 +219,28 @@ const App: React.FC = () => {
 
   const resetMarkers = useCallback(() => {
     setMarkers(() => {
-      const generalMarker = createDefaultMarker(0, 0, 640, 480, 'Quadro Geral', '#ffc400', true, 'general');
+      // Cria um novo Quadro Geral sem função OpenCV
+      const generalMarker = createDefaultMarker(
+        0,
+        0,
+        640,
+        480,
+        'Quadro Geral',
+        '#ffc400',
+        true,
+        'general',
+        false // não incluir defaults
+      );
       return [generalMarker];
     });
+
+    // Limpa o marcador selecionado
     setSelectedMarkerId(null);
-    console.log('Reset markers while preserving general marker with default OpenCV properties');
+
+    // Limpa todos os resultados de processamento
+    setProcessingResults(new Map());
+
+    console.log('Reset: removido todos os marcadores e resetado Quadro Geral');
   }, []);
 
   const handleVideoDimensionsChange = useCallback((dimensions: VideoDimensions) => {
