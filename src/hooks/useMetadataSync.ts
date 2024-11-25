@@ -205,27 +205,48 @@ export function useMetadataSync({
     }
   }, [markers, selectedMarkerId]);
 
+  // Função para processar mudanças no tempo do vídeo
+  const handleTimeUpdate = useCallback(() => {
+    if (!isSyncEnabled || !wsRef.current || !isConnectedRef.current) return;
+    sendVideoTime();
+  }, [isSyncEnabled, sendVideoTime]);
+
+  // Efeito para lidar com o intervalo durante a reprodução
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-
-    if (isPlaying && isSyncEnabled && selectedMarkerId && wsRef.current?.readyState === WebSocket.OPEN) {
-      // Ajusta a frequência de envio para aproximadamente 30fps
-      intervalId = setInterval(sendVideoTime, 33);
+    if (isPlaying && isSyncEnabled) {
+      const intervalId = setInterval(handleTimeUpdate, 33); // ~30fps
+      return () => clearInterval(intervalId);
     }
+  }, [isPlaying, isSyncEnabled, handleTimeUpdate]);
 
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
+  // Efeito para lidar com eventos de seeking e timeupdate
+  useEffect(() => {
+    if (!videoRef.current || !isSyncEnabled) return;
+
+    const video = videoRef.current;
+    
+    // Processa imediatamente após um seek
+    const handleSeek = () => {
+      console.log('Seek detected, sending time update');
+      handleTimeUpdate();
+    };
+
+    // Processa quando o tempo é atualizado (inclui play/pause e seeking)
+    const handleVideoTimeUpdate = () => {
+      if (!isPlaying) { // Só processa se não estiver em reprodução
+        console.log('Time updated while paused, sending update');
+        handleTimeUpdate();
       }
     };
-  }, [isPlaying, isSyncEnabled, sendVideoTime, selectedMarkerId]);
 
-  // Adiciona um efeito para processar quando há mudança manual de frame
-  useEffect(() => {
-    if (!isPlaying && isSyncEnabled && selectedMarkerId) {
-      sendVideoTime();
-    }
-  }, [isSyncEnabled, selectedMarkerId, videoRef.current?.currentTime]);
+    video.addEventListener('seeked', handleSeek);
+    video.addEventListener('timeupdate', handleVideoTimeUpdate);
 
-  return null;
+    return () => {
+      video.removeEventListener('seeked', handleSeek);
+      video.removeEventListener('timeupdate', handleVideoTimeUpdate);
+    };
+  }, [videoRef, isSyncEnabled, isPlaying, handleTimeUpdate]);
+
+  return { isConnected: isConnectedRef.current };
 } 
