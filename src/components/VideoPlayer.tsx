@@ -23,6 +23,8 @@ interface VideoPlayerProps {
   onProcessVideo: () => void;
   fps: number;
   onFpsChange: (fps: number) => void;
+  isDebugEnabled?: boolean;
+  onDebugChange: (enabled: boolean) => void;
 }
 
 interface WebSocketBoundingBox {
@@ -46,6 +48,8 @@ export function VideoPlayer({
   onSyncChange,
   onProcessVideo,
   onFpsChange,
+  isDebugEnabled = false,
+  onDebugChange,
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,19 +79,19 @@ export function VideoPlayer({
 
   const onMetadataUpdate = useCallback(
     (wsResponse: any) => {
-      console.log('VideoPlayer received metadata update:', wsResponse);
+      isDebugEnabled && console.log('VideoPlayer received metadata update:', wsResponse);
       if (!wsResponse?.data?.results || !selectedMarkerId) {
-        console.log('Skipping update, no results or selectedMarkerId');
+        isDebugEnabled && console.log('Skipping update, no results or selectedMarkerId');
         return;
       }
 
       const firstResult = wsResponse.data.results[0];
       if (!firstResult?.bounding_boxes) {
-        console.log('No bounding boxes in result');
+        isDebugEnabled && console.log('No bounding boxes in result');
         return;
       }
 
-      console.log('Setting sync results with:', firstResult);
+      isDebugEnabled && console.log('Setting sync results with:', firstResult);
       setSyncResults((prev) => {
         const newResults = new Map(prev);
         newResults.set(selectedMarkerId, [
@@ -99,7 +103,7 @@ export function VideoPlayer({
         return newResults;
       });
     },
-    [selectedMarkerId]
+    [selectedMarkerId, isDebugEnabled]
   );
 
   useMetadataSync({
@@ -109,6 +113,7 @@ export function VideoPlayer({
     isSyncEnabled,
     onMetadataUpdate,
     selectedMarkerId,
+    isDebugEnabled,
   });
 
   const handleFpsCalculation = useCallback(() => {
@@ -414,7 +419,7 @@ export function VideoPlayer({
           <p className="text-gray-500">Nenhuma mídia carregada</p>
         </div>
       )}
-      <div className="absolute top-2 left-2 flex items-center gap-2">
+      <div className="absolute top-2 left-2 flex flex-col gap-2">
         <label className="flex items-center cursor-pointer">
           <div className="relative">
             <input
@@ -431,6 +436,24 @@ export function VideoPlayer({
             ></div>
           </div>
           <span className="ml-2 text-sm text-gray-600">Sync</span>
+        </label>
+
+        <label className="flex items-center cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={isDebugEnabled}
+              onChange={(e) => onDebugChange(e.target.checked)}
+            />
+            <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
+            <div
+              className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
+                isDebugEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            ></div>
+          </div>
+          <span className="ml-2 text-sm text-gray-600">Debug</span>
         </label>
       </div>
       {selectedMarkerId && !isSyncEnabled && (

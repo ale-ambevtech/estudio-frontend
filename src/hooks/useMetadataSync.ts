@@ -13,6 +13,7 @@ interface UseMetadataSyncProps {
   isSyncEnabled: boolean;
   onMetadataUpdate: (data: ServerMessage['data']) => void;
   selectedMarkerId: string | null;
+  isDebugEnabled: boolean;
 }
 
 interface WSRequest {
@@ -81,7 +82,8 @@ export function useMetadataSync({
   markers,
   isSyncEnabled,
   onMetadataUpdate,
-  selectedMarkerId
+  selectedMarkerId,
+  isDebugEnabled
 }: UseMetadataSyncProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
@@ -108,17 +110,17 @@ export function useMetadataSync({
 
     try {
       cleanupWebSocket();
-      console.log('Connecting to WebSocket...');
+      isDebugEnabled && console.log('Connecting to WebSocket...');
       
       wsRef.current = new WebSocket(WS_URL);
       
       wsRef.current.onopen = () => {
-        console.log('WebSocket connected successfully');
+        isDebugEnabled && console.log('WebSocket connected successfully');
         isConnectedRef.current = true;
       };
 
       wsRef.current.onclose = (event) => {
-        console.log('WebSocket closed:', event);
+        isDebugEnabled && console.log('WebSocket closed:', event);
         isConnectedRef.current = false;
         if (isSyncEnabled && !event.wasClean) {
           wsRef.current = null;
@@ -129,11 +131,11 @@ export function useMetadataSync({
       };
 
       wsRef.current.onmessage = (event) => {
-        console.log('WebSocket message received:', event.data);
+        isDebugEnabled && console.log('WebSocket message received:', event.data);
         if (onMetadataUpdate) {
           try {
             const data = JSON.parse(event.data);
-            console.log('Parsed WebSocket data:', data);
+            isDebugEnabled && console.log('Parsed WebSocket data:', data);
             onMetadataUpdate(data);
           } catch (error) {
             console.error('Error parsing WebSocket message:', error);
@@ -149,7 +151,7 @@ export function useMetadataSync({
       isConnectedRef.current = false;
       cleanupWebSocket();
     }
-  }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocket]);
+  }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocket, isDebugEnabled]);
 
   useEffect(() => {
     if (isSyncEnabled) {
@@ -163,7 +165,7 @@ export function useMetadataSync({
 
   const sendVideoTime = useCallback(() => {
     if (!wsRef.current || !isConnectedRef.current || !videoRef.current || !selectedMarkerId) {
-      console.log('Skipping send, conditions not met:', {
+      isDebugEnabled && console.log('Skipping send, conditions not met:', {
         hasWs: !!wsRef.current,
         isConnected: isConnectedRef.current,
         hasVideo: !!videoRef.current,
@@ -197,13 +199,13 @@ export function useMetadataSync({
         }
       };
 
-      console.log('Sending WS message:', JSON.stringify(message, null, 2));
+      isDebugEnabled && console.log('Sending WS message:', JSON.stringify(message, null, 2));
       wsRef.current.send(JSON.stringify(message));
       lastProcessedTimeRef.current = currentTime;
     } catch (error) {
       console.error('Error sending WebSocket message:', error);
     }
-  }, [markers, selectedMarkerId]);
+  }, [markers, selectedMarkerId, isDebugEnabled]);
 
   // Função para processar mudanças no tempo do vídeo
   const handleTimeUpdate = useCallback(() => {
@@ -246,7 +248,7 @@ export function useMetadataSync({
       video.removeEventListener('seeked', handleSeek);
       video.removeEventListener('timeupdate', handleVideoTimeUpdate);
     };
-  }, [videoRef, isSyncEnabled, isPlaying, handleTimeUpdate]);
+  }, [videoRef, isSyncEnabled, isPlaying, handleTimeUpdate, isDebugEnabled]);
 
   return { isConnected: isConnectedRef.current };
 } 

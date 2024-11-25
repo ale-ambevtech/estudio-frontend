@@ -16,10 +16,22 @@ export interface VideoPlayerProps {
   onProcessVideo: () => void;
   fps: number;
   onFpsChange: (fps: number) => void;
+  isDebugEnabled?: boolean;
+  onDebugChange: (enabled: boolean) => void;
 }
 
 export interface LoadingProps {
   message?: string;
+}
+
+export interface UseMetadataSyncProps {
+  isPlaying: boolean;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  markers: Marker[];
+  isSyncEnabled: boolean;
+  onMetadataUpdate: (data: any) => void;
+  selectedMarkerId: string | null;
+  isDebugEnabled: boolean;
 }
 
 // Adicione outras interfaces de props conforme necessário 

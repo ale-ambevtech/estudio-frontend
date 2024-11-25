@@ -98,6 +98,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [isSyncEnabled, setIsSyncEnabled] = useState(false);
+  const [isDebugEnabled, setIsDebugEnabled] = useState(false);
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -535,6 +536,8 @@ const App: React.FC = () => {
                 onProcessVideo={handleProcessVideo}
                 fps={fps}
                 onFpsChange={setFps}
+                isDebugEnabled={isDebugEnabled}
+                onDebugChange={setIsDebugEnabled}
               />
             </div>
 
