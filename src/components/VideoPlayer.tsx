@@ -413,14 +413,14 @@ export function VideoPlayer({
         {mediaType === 'video' && mediaUrl && <video ref={videoRef} className="hidden" preload="auto" />}
       </div>
       {!mediaUrl && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-300 rounded-lg">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-300 rounded-lg min-h-[360px]">
           <p className="text-gray-500">Nenhuma mídia carregada</p>
         </div>
       )}
-      {selectedMarkerId && !isSyncEnabled && (
+      {!isSyncEnabled && (
         <div className="flex justify-center mt-4">
           <button onClick={onProcessVideo} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            Processar Região Selecionada
+            Processar Marcadores
           </button>
         </div>
       )}

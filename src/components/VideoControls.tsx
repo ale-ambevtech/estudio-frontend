@@ -5,12 +5,14 @@ interface VideoControlsProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   fps: number;
   isPlaying: boolean;
+  onPlayPauseChange: (isPlaying: boolean) => void;
 }
 
-export function VideoControls({ videoRef, fps, isPlaying }: VideoControlsProps) {
+export function VideoControls({ videoRef, fps, isPlaying, onPlayPauseChange }: VideoControlsProps) {
   const { handlePlayPause, handleStepForward, handleStepBackward } = useVideoControls({
     videoRef,
     fps,
+    onPlayPauseChange,
   });
 
   return (

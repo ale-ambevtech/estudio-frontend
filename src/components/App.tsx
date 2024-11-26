@@ -283,118 +283,103 @@ const App: React.FC = () => {
   };
 
   const handleProcessVideo = async () => {
-    if (!selectedMarkerId) return;
-    const marker = markers.find((m) => m.id === selectedMarkerId);
-    if (!marker || !marker.opencvFunction || !marker.opencvParams) return;
+    if (!videoRef.current) return;
 
-    let pdiFunction;
-    switch (marker.opencvFunction) {
-      case 'colorSegmentation':
-        pdiFunction = {
-          function: OPENCV_FUNCTIONS.COLOR_SEGMENTATION,
-          parameters: {
-            lower_color: marker.opencvParams.lowerColor || { r: 0, g: 0, b: 0 },
-            upper_color: marker.opencvParams.upperColor || { r: 255, g: 255, b: 255 },
-            tolerance: Number(marker.opencvParams.tolerance) || 10,
-            min_area: Number(marker.opencvParams.minArea) || 100,
-            max_area: Number(marker.opencvParams.maxArea) || 10000,
-          },
-          output_type: OUTPUT_TYPES.BOUNDING_BOX,
-        };
-        break;
+    // Processa todos os marcadores que têm função OpenCV configurada, incluindo o quadro geral
+    const markersToProcess = markers.filter((marker) => marker.opencvFunction && marker.opencvParams);
 
-      case 'detectShapes':
-        pdiFunction = {
-          function: OPENCV_FUNCTIONS.SHAPE_DETECTION,
-          parameters: {
-            shapes: marker.opencvParams.shapes || ['circle', 'rectangle', 'triangle'],
-            shape_tolerance: Number(marker.opencvParams.shapeTolerance) || 0.1,
-          },
-          output_type: OUTPUT_TYPES.BOUNDING_BOX,
-        };
-        break;
+    for (const marker of markersToProcess) {
+      let pdiFunction;
 
-      case 'templateMatching':
-        pdiFunction = {
-          function: OPENCV_FUNCTIONS.TEMPLATE_MATCHING,
-          parameters: {
-            template_image: marker.opencvParams.templateImage || '',
-            threshold: Number(marker.opencvParams.threshold) || 0.8,
-          },
-          output_type: OUTPUT_TYPES.BOUNDING_BOX,
-        };
-        break;
+      // Garantir que opencvParams existe
+      if (!marker.opencvParams) continue;
 
-      case 'detectPeople':
-        pdiFunction = {
-          function: OPENCV_FUNCTIONS.PEOPLE_DETECTION,
-          parameters: {
-            min_area: Number(marker.opencvParams.minArea) || 1000,
-            max_area: Number(marker.opencvParams.maxArea) || 60000,
-          },
-          output_type: OUTPUT_TYPES.BOUNDING_BOX,
-        };
-        break;
-
-      default:
-        console.error('Invalid OpenCV function selected');
-        return;
-    }
-
-    const request: ProcessVideoRequest = {
-      pdi_functions: [pdiFunction],
-      roi: {
-        position: {
-          x: Math.round(marker.x),
-          y: Math.round(marker.y),
-        },
-        size: {
-          width: Math.round(marker.width),
-          height: Math.round(marker.height),
-        },
-      },
-      timestamp: Math.round((videoRef.current?.currentTime || 0) * 1000),
-    };
-
-    try {
-      console.log('1. Sending request:', request);
-      const result = (await processVideo(request)) as ProcessingResult;
-
-      if (result.results?.[0]) {
-        const firstResult = result.results[0];
-        if ('bounding_boxes' in firstResult) {
-          const formattedResults = [
-            {
-              function: firstResult.function,
-              bounding_boxes: firstResult.bounding_boxes as number[][],
+      switch (marker.opencvFunction) {
+        case 'colorSegmentation':
+          pdiFunction = {
+            function: OPENCV_FUNCTIONS.COLOR_SEGMENTATION,
+            parameters: {
+              lower_color: marker.opencvParams?.lowerColor || { r: 0, g: 0, b: 0 },
+              upper_color: marker.opencvParams?.upperColor || { r: 255, g: 255, b: 255 },
+              tolerance: Number(marker.opencvParams?.tolerance) || 10,
+              min_area: Number(marker.opencvParams?.minArea) || 100,
+              max_area: Number(marker.opencvParams?.maxArea) || 10000,
             },
-          ];
-          // Atualizar apenas os resultados do marcador atual
-          setProcessingResults((prev) => new Map(prev).set(selectedMarkerId, formattedResults));
-        } else {
-          // Limpar resultados do marcador atual
-          setProcessingResults((prev) => {
-            const newMap = new Map(prev);
-            newMap.delete(selectedMarkerId);
-            return newMap;
-          });
-        }
-      } else {
-        // Limpar resultados do marcador atual
-        setProcessingResults((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(selectedMarkerId);
-          return newMap;
-        });
+            output_type: OUTPUT_TYPES.BOUNDING_BOX,
+          };
+          break;
+
+        case 'detectShapes':
+          pdiFunction = {
+            function: OPENCV_FUNCTIONS.SHAPE_DETECTION,
+            parameters: {
+              shapes: marker.opencvParams?.shapes || ['circle', 'rectangle', 'triangle'],
+              shape_tolerance: Number(marker.opencvParams?.shapeTolerance) || 0.1,
+            },
+            output_type: OUTPUT_TYPES.BOUNDING_BOX,
+          };
+          break;
+
+        case 'templateMatching':
+          pdiFunction = {
+            function: OPENCV_FUNCTIONS.TEMPLATE_MATCHING,
+            parameters: {
+              template_image: marker.opencvParams?.templateImage || '',
+              threshold: Number(marker.opencvParams?.threshold) || 0.8,
+            },
+            output_type: OUTPUT_TYPES.BOUNDING_BOX,
+          };
+          break;
+
+        case 'detectPeople':
+          pdiFunction = {
+            function: OPENCV_FUNCTIONS.PEOPLE_DETECTION,
+            parameters: {
+              min_area: Number(marker.opencvParams?.minArea) || 1000,
+              max_area: Number(marker.opencvParams?.maxArea) || 60000,
+            },
+            output_type: OUTPUT_TYPES.BOUNDING_BOX,
+          };
+          break;
+
+        default:
+          console.error('Invalid OpenCV function selected');
+          continue;
       }
-    } catch (error) {
-      console.error('Error in handleProcessVideo:', error);
-      // Limpar resultados do marcador atual em caso de erro
-      setProcessingResults((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(selectedMarkerId);
-        return newMap;
-      });
+
+      const request: ProcessVideoRequest = {
+        pdi_functions: [pdiFunction],
+        roi: {
+          position: {
+            x: Math.round(marker.x),
+            y: Math.round(marker.y),
+          },
+          size: {
+            width: Math.round(marker.width),
+            height: Math.round(marker.height),
+          },
+        },
+        timestamp: Math.round((videoRef.current?.currentTime || 0) * 1000),
+      };
+
+      try {
+        const result = (await processVideo(request)) as ProcessingResult;
+
+        if (result.results?.[0]) {
+          const firstResult = result.results[0];
+          if ('bounding_boxes' in firstResult) {
+            const formattedResults = [
+              {
+                function: firstResult.function,
+                bounding_boxes: firstResult.bounding_boxes as number[][],
+              },
+            ];
+            setProcessingResults((prev) => new Map(prev).set(marker.id, formattedResults));
+          }
+        }
+      } catch (error) {
+        console.error('Error processing marker:', marker.id, error);
+      }
     }
   };
 
@@ -578,7 +563,7 @@ const App: React.FC = () => {
             {mediaType === 'video' && (
               <div className="w-full">
                 <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
-                <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} />
+                <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} onPlayPauseChange={setIsPlaying} />
               </div>
             )}
           </div>

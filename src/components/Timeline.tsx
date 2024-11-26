@@ -45,9 +45,9 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
     const video = videoRef.current!;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
-    const numberOfThumbnails = 10;
+    const numberOfThumbnails = 6;
 
-    const thumbnailHeight = 40;
+    const thumbnailHeight = 120;
     const thumbnailWidth = (video.videoWidth / video.videoHeight) * thumbnailHeight;
 
     canvas.width = thumbnailWidth;

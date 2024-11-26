@@ -3,19 +3,21 @@ import { useCallback } from 'react';
 interface UseVideoControlsProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   fps: number;
+  onPlayPauseChange: (isPlaying: boolean) => void;
 }
 
-export function useVideoControls({ videoRef, fps }: UseVideoControlsProps) {
+export function useVideoControls({ videoRef, fps, onPlayPauseChange }: UseVideoControlsProps) {
   const handlePlayPause = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    if (!videoRef.current) return;
     
-    if (video.paused || video.ended) {
-      video.play();
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      onPlayPauseChange(true);
     } else {
-      video.pause();
+      videoRef.current.pause();
+      onPlayPauseChange(false);
     }
-  }, [videoRef]);
+  }, [videoRef, onPlayPauseChange]);
 
   const handleStepForward = useCallback(() => {
     const video = videoRef.current;
