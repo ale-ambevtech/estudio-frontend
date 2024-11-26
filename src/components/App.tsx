@@ -514,7 +514,11 @@ const App: React.FC = () => {
                       checked={isSyncEnabled}
                       onChange={(e) => setIsSyncEnabled(e.target.checked)}
                     />
-                    <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
+                    <div
+                      className={`w-10 h-5 rounded-full shadow-inner transition-colors ${
+                        isSyncEnabled ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                    ></div>
                     <div
                       className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
                         isSyncEnabled ? 'translate-x-6' : 'translate-x-1'
@@ -532,7 +536,11 @@ const App: React.FC = () => {
                       checked={isDebugEnabled}
                       onChange={(e) => setIsDebugEnabled(e.target.checked)}
                     />
-                    <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
+                    <div
+                      className={`w-10 h-5 rounded-full shadow-inner transition-colors ${
+                        isDebugEnabled ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                    ></div>
                     <div
                       className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
                         isDebugEnabled ? 'translate-x-6' : 'translate-x-1'
