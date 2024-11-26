@@ -6,6 +6,7 @@ import { MARKER_COLORS } from '../constants/colors';
 import { calculateScaledDimensions, calculateFps } from '../utils/video';
 import { useMetadataSync } from '../hooks/useMetadataSync';
 import { type BoundingBoxResult } from '../types/api';
+import { useSyncContext } from '../contexts/SyncContext';
 
 interface VideoPlayerProps {
   markers: Marker[];
@@ -44,11 +45,9 @@ export function VideoPlayer({
   mediaUrl,
   processingResults,
   isSyncEnabled,
-  onSyncChange,
   onProcessVideo,
   onFpsChange,
   isDebugEnabled = false,
-  onDebugChange,
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,15 +71,16 @@ export function VideoPlayer({
   const wsBoxesRef = useRef<WebSocketBoundingBox[]>([]);
   const [syncResults, setSyncResults] = useState<Map<string, BoundingBoxResult[]>>(new Map());
 
+  useSyncContext();
+
   useEffect(() => {
     wsBoxesRef.current = wsBoxes;
   }, [wsBoxes]);
 
   const onMetadataUpdate = useCallback(
     (wsResponse: any) => {
-      isDebugEnabled && console.log('VideoPlayer received metadata update:', wsResponse);
-      if (!wsResponse?.data?.results || !selectedMarkerId) {
-        isDebugEnabled && console.log('Skipping update, no results or selectedMarkerId');
+      if (!wsResponse?.data?.results || !wsResponse?.data?.marker_id) {
+        isDebugEnabled && console.log('Skipping update, invalid response structure');
         return;
       }
 
@@ -90,10 +90,11 @@ export function VideoPlayer({
         return;
       }
 
-      isDebugEnabled && console.log('Setting sync results with:', firstResult);
+      const markerId = wsResponse.data.marker_id;
+
       setSyncResults((prev) => {
         const newResults = new Map(prev);
-        newResults.set(selectedMarkerId, [
+        newResults.set(markerId, [
           {
             function: firstResult.function,
             bounding_boxes: firstResult.bounding_boxes,
@@ -101,8 +102,10 @@ export function VideoPlayer({
         ]);
         return newResults;
       });
+
+      isDebugEnabled && console.log('Updated sync results for marker:', markerId);
     },
-    [selectedMarkerId, isDebugEnabled]
+    [isDebugEnabled]
   );
 
   useMetadataSync({

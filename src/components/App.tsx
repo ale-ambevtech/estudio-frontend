@@ -14,6 +14,7 @@ import { processVideo, uploadVideo } from '../services/api';
 import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult } from '../types/api';
 import { Loading } from './Loading';
 import { createDefaultMarker } from '../utils/marker-utils';
+import { SyncContext } from '../contexts/SyncContext';
 
 interface VideoDimensions {
   width: number;
@@ -91,6 +92,8 @@ const App: React.FC = () => {
 
   const [isSyncEnabled, setIsSyncEnabled] = useState(false);
   const [isDebugEnabled, setIsDebugEnabled] = useState(false);
+
+  const [lastSentMessages] = useState(new Map());
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -459,126 +462,128 @@ const App: React.FC = () => {
   const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
 
   return (
-    <div className="min-h-screen bg-gray-800">
-      <div className="container mx-auto p-4 grid grid-cols-[280px_1fr_280px] gap-6">
-        {/* Sidebar Esquerda */}
-        <Sidebar
-          markers={markers}
-          selectMarker={selectMarker}
-          selectedMarkerId={selectedMarkerId}
-          updateMarker={updateMarker}
-          resetMarkers={resetMarkers}
-          resetAll={resetAll}
-          className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
-        />
+    <SyncContext.Provider value={{ lastSentMessages }}>
+      <div className="min-h-screen bg-gray-800">
+        <div className="container mx-auto p-4 grid grid-cols-[280px_1fr_280px] gap-6">
+          {/* Sidebar Esquerda */}
+          <Sidebar
+            markers={markers}
+            selectMarker={selectMarker}
+            selectedMarkerId={selectedMarkerId}
+            updateMarker={updateMarker}
+            resetMarkers={resetMarkers}
+            resetAll={resetAll}
+            className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+          />
 
-        {/* Área Principal */}
-        <main className="panel rounded-lg shadow-sm p-6 flex flex-col gap-4">
-          <div className="space-y-4">
-            {/* Input de arquivo */}
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <label htmlFor="media-upload" className="block text-sm font-medium mb-2">
-                  Carregar Vídeo ou Imagem:
-                </label>
-                <input
-                  type="file"
-                  id="media-upload"
-                  accept="video/*,image/*"
-                  onChange={handleFileUpload}
-                  className=""
+          {/* Área Principal */}
+          <main className="panel rounded-lg shadow-sm p-6 flex flex-col gap-4">
+            <div className="space-y-4">
+              {/* Input de arquivo */}
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <label htmlFor="media-upload" className="block text-sm font-medium mb-2">
+                    Carregar Vídeo ou Imagem:
+                  </label>
+                  <input
+                    type="file"
+                    id="media-upload"
+                    accept="video/*,image/*"
+                    onChange={handleFileUpload}
+                    className=""
+                  />
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={isSyncEnabled}
+                        onChange={(e) => setIsSyncEnabled(e.target.checked)}
+                      />
+                      <div
+                        className={`w-10 h-5 rounded-full shadow-inner transition-colors ${
+                          isSyncEnabled ? 'bg-blue-500' : 'bg-gray-300'
+                        }`}
+                      ></div>
+                      <div
+                        className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
+                          isSyncEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      ></div>
+                    </div>
+                    <span className="ml-2 text-sm text-gray-600">Sync</span>
+                  </label>
+
+                  <label className="flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={isDebugEnabled}
+                        onChange={(e) => setIsDebugEnabled(e.target.checked)}
+                      />
+                      <div
+                        className={`w-10 h-5 rounded-full shadow-inner transition-colors ${
+                          isDebugEnabled ? 'bg-blue-500' : 'bg-gray-300'
+                        }`}
+                      ></div>
+                      <div
+                        className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
+                          isDebugEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      ></div>
+                    </div>
+                    <span className="ml-2 text-sm text-gray-600">Debug</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Player de Vídeo/Imagem */}
+              <div className="relative">
+                <VideoPlayer
+                  markers={markers}
+                  addMarker={addMarker}
+                  selectedMarkerId={selectedMarkerId}
+                  videoRef={videoRef}
+                  onDimensionsChange={handleVideoDimensionsChange}
+                  selectMarker={selectMarker}
+                  mediaType={mediaType}
+                  mediaUrl={mediaUrl}
+                  processingResults={processingResults}
+                  isSyncEnabled={isSyncEnabled}
+                  onSyncChange={setIsSyncEnabled}
+                  onProcessVideo={handleProcessVideo}
+                  fps={fps}
+                  onFpsChange={setFps}
+                  isDebugEnabled={isDebugEnabled}
+                  onDebugChange={setIsDebugEnabled}
                 />
               </div>
 
-              <div className="flex items-center gap-4">
-                <label className="flex items-center cursor-pointer">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={isSyncEnabled}
-                      onChange={(e) => setIsSyncEnabled(e.target.checked)}
-                    />
-                    <div
-                      className={`w-10 h-5 rounded-full shadow-inner transition-colors ${
-                        isSyncEnabled ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                    ></div>
-                    <div
-                      className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
-                        isSyncEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    ></div>
-                  </div>
-                  <span className="ml-2 text-sm text-gray-600">Sync</span>
-                </label>
-
-                <label className="flex items-center cursor-pointer">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={isDebugEnabled}
-                      onChange={(e) => setIsDebugEnabled(e.target.checked)}
-                    />
-                    <div
-                      className={`w-10 h-5 rounded-full shadow-inner transition-colors ${
-                        isDebugEnabled ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                    ></div>
-                    <div
-                      className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
-                        isDebugEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    ></div>
-                  </div>
-                  <span className="ml-2 text-sm text-gray-600">Debug</span>
-                </label>
-              </div>
+              {/* Timeline e Controles */}
+              {mediaType === 'video' && (
+                <div className="w-full">
+                  <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
+                  <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} onPlayPauseChange={setIsPlaying} />
+                </div>
+              )}
             </div>
+          </main>
 
-            {/* Player de Vídeo/Imagem */}
-            <div className="relative">
-              <VideoPlayer
-                markers={markers}
-                addMarker={addMarker}
-                selectedMarkerId={selectedMarkerId}
-                videoRef={videoRef}
-                onDimensionsChange={handleVideoDimensionsChange}
-                selectMarker={selectMarker}
-                mediaType={mediaType}
-                mediaUrl={mediaUrl}
-                processingResults={processingResults}
-                isSyncEnabled={isSyncEnabled}
-                onSyncChange={setIsSyncEnabled}
-                onProcessVideo={handleProcessVideo}
-                fps={fps}
-                onFpsChange={setFps}
-                isDebugEnabled={isDebugEnabled}
-                onDebugChange={setIsDebugEnabled}
-              />
-            </div>
-
-            {/* Timeline e Controles */}
-            {mediaType === 'video' && (
-              <div className="w-full">
-                <Timeline videoRef={videoRef} onSeek={handleSeek} onThumbnailsGenerated={handleThumbnailsGenerated} />
-                <VideoControls videoRef={videoRef} fps={fps} isPlaying={isPlaying} onPlayPauseChange={setIsPlaying} />
-              </div>
-            )}
-          </div>
-        </main>
-
-        {/* Sidebar Direita */}
-        <ConfigPanel
-          marker={selectedMarker}
-          updateMarker={updateMarker}
-          deleteMarker={deleteMarker}
-          className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
-        />
+          {/* Sidebar Direita */}
+          <ConfigPanel
+            marker={selectedMarker}
+            updateMarker={updateMarker}
+            deleteMarker={deleteMarker}
+            className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+          />
+        </div>
+        {isLoading && <Loading />}
       </div>
-      {isLoading && <Loading />}
-    </div>
+    </SyncContext.Provider>
   );
 };
 

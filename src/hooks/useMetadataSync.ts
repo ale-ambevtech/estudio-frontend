@@ -22,7 +22,6 @@ export function useMetadataSync({
   markers,
   isSyncEnabled,
   onMetadataUpdate,
-  selectedMarkerId,
   isDebugEnabled
 }: UseMetadataSyncProps) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -104,62 +103,46 @@ export function useMetadataSync({
   }, [isSyncEnabled, connect, cleanupWebSocket]);
 
   const sendVideoTime = useCallback(() => {
-    if (!wsRef.current || !isConnectedRef.current || !videoRef.current || !selectedMarkerId) {
-      isDebugEnabled && console.log('Skipping send, conditions not met:', {
-        hasWs: !!wsRef.current,
-        isConnected: isConnectedRef.current,
-        hasVideo: !!videoRef.current,
-        markerId: selectedMarkerId
-      });
-      return;
-    }
+    if (!wsRef.current || !isConnectedRef.current || !videoRef.current) return;
 
     const currentTime = Math.floor(videoRef.current.currentTime * 1000);
     if (currentTime === lastProcessedTimeRef.current) return;
 
-    const markerToProcess = markers.find(m => m.id === selectedMarkerId);
-    
-    isDebugEnabled && console.log('Marker details:', {
-      id: markerToProcess?.id,
-      opencvFunction: markerToProcess?.opencvFunction,
-      opencvParams: markerToProcess?.opencvParams,
-      allProperties: markerToProcess
+    // Processa todos os marcadores que têm função OpenCV configurada
+    const markersToProcess = markers.filter(marker => 
+      marker.opencvFunction && marker.opencvParams
+    );
+
+    markersToProcess.forEach(marker => {
+      const pdiFunction = createPDIFunction(marker);
+      if (!pdiFunction) return;
+
+      try {
+        const message = {
+          marker_id: marker.id,
+          timestamp: currentTime,
+          pdi_functions: [pdiFunction],
+          roi: {
+            position: {
+              x: Math.round(marker.x),
+              y: Math.round(marker.y)
+            },
+            size: {
+              width: Math.round(marker.width),
+              height: Math.round(marker.height)
+            }
+          }
+        };
+
+        wsRef.current?.send(JSON.stringify(message));
+        isDebugEnabled && console.log('Processing marker:', marker.id);
+      } catch (error) {
+        console.error('Error processing marker:', marker.id, error);
+      }
     });
 
-    if (!markerToProcess) return;
-
-    const pdiFunction = createPDIFunction(markerToProcess);
-    if (!pdiFunction) {
-      isDebugEnabled && console.log('No PDI function created. PDI Function details:', {
-        markerFunction: markerToProcess.opencvFunction,
-        markerParams: markerToProcess.opencvParams
-      });
-      return;
-    }
-
-    try {
-      const message = {
-        timestamp: currentTime,
-        pdi_functions: [pdiFunction],
-        roi: {
-          position: {
-            x: Math.round(markerToProcess.x),
-            y: Math.round(markerToProcess.y)
-          },
-          size: {
-            width: Math.round(markerToProcess.width),
-            height: Math.round(markerToProcess.height)
-          }
-        }
-      };
-
-      isDebugEnabled && console.log('Sending WS message:', JSON.stringify(message, null, 2));
-      wsRef.current.send(JSON.stringify(message));
-      lastProcessedTimeRef.current = currentTime;
-    } catch (error) {
-      console.error('Error sending WebSocket message:', error);
-    }
-  }, [markers, selectedMarkerId, isDebugEnabled]);
+    lastProcessedTimeRef.current = currentTime;
+  }, [markers, isDebugEnabled]);
 
   // Função para processar mudanças no tempo do vídeo
   const handleTimeUpdate = useCallback(() => {
