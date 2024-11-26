@@ -2,7 +2,11 @@ import { useEffect, useRef, useCallback } from 'react';
 import type { ServerMessage } from '../types/websocket';
 import { createPDIFunction } from '../utils/pdi';
 
-const WS_URL = 'ws://localhost:8000/api/v1/ws/metadata';
+const WS_URL = import.meta.env.VITE_WS_URL;
+
+if (!WS_URL) {
+  throw new Error('VITE_WS_URL environment variable is not defined');
+}
 
 interface UseMetadataSyncProps {
   isPlaying: boolean;
