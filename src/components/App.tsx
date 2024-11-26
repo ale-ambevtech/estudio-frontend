@@ -491,11 +491,57 @@ const App: React.FC = () => {
         <main className="panel rounded-lg shadow-sm p-6 flex flex-col gap-4">
           <div className="space-y-4">
             {/* Input de arquivo */}
-            <div className="mb-6">
-              <label htmlFor="media-upload" className="block text-sm font-medium mb-2">
-                Carregar Vídeo ou Imagem:
-              </label>
-              <input type="file" id="media-upload" accept="video/*,image/*" onChange={handleFileUpload} className="" />
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label htmlFor="media-upload" className="block text-sm font-medium mb-2">
+                  Carregar Vídeo ou Imagem:
+                </label>
+                <input
+                  type="file"
+                  id="media-upload"
+                  accept="video/*,image/*"
+                  onChange={handleFileUpload}
+                  className=""
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isSyncEnabled}
+                      onChange={(e) => setIsSyncEnabled(e.target.checked)}
+                    />
+                    <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
+                    <div
+                      className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
+                        isSyncEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    ></div>
+                  </div>
+                  <span className="ml-2 text-sm text-gray-600">Sync</span>
+                </label>
+
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isDebugEnabled}
+                      onChange={(e) => setIsDebugEnabled(e.target.checked)}
+                    />
+                    <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
+                    <div
+                      className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
+                        isDebugEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    ></div>
+                  </div>
+                  <span className="ml-2 text-sm text-gray-600">Debug</span>
+                </label>
+              </div>
             </div>
 
             {/* Player de Vídeo/Imagem */}

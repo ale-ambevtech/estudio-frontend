@@ -413,47 +413,10 @@ export function VideoPlayer({
         {mediaType === 'video' && mediaUrl && <video ref={videoRef} className="hidden" preload="auto" />}
       </div>
       {!mediaUrl && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-300 rounded-lg">
           <p className="text-gray-500">Nenhuma mídia carregada</p>
         </div>
       )}
-      <div className="absolute top-2 left-2 flex flex-col gap-2">
-        <label className="flex items-center cursor-pointer">
-          <div className="relative">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={isSyncEnabled}
-              onChange={(e) => onSyncChange(e.target.checked)}
-            />
-            <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
-            <div
-              className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
-                isSyncEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            ></div>
-          </div>
-          <span className="ml-2 text-sm text-gray-600">Sync</span>
-        </label>
-
-        <label className="flex items-center cursor-pointer">
-          <div className="relative">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={isDebugEnabled}
-              onChange={(e) => onDebugChange(e.target.checked)}
-            />
-            <div className="w-10 h-5 bg-gray-300 rounded-full shadow-inner"></div>
-            <div
-              className={`absolute w-3 h-3 bg-white rounded-full shadow -translate-y-1/2 top-1/2 transition-transform ${
-                isDebugEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            ></div>
-          </div>
-          <span className="ml-2 text-sm text-gray-600">Debug</span>
-        </label>
-      </div>
       {selectedMarkerId && !isSyncEnabled && (
         <div className="flex justify-center mt-4">
           <button onClick={onProcessVideo} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">

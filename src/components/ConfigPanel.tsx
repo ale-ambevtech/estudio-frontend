@@ -343,7 +343,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             value={marker.name || ''}
             onChange={handleNameChange}
             disabled={marker.isGeneral}
-            className="w-full p-2 rounded-md disabled:bg-gray-100"
+            className="w-full p-2 rounded-md disabled:bg-gray-300"
             aria-label="Nome do marcador"
           />
         </div>

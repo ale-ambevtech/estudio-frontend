@@ -100,7 +100,7 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
   return (
     <div className="w-[640px] space-y-2 m-auto">
       {/* Container dos thumbnails */}
-      <div className="relative w-full h-[60px] bg-gray-100 rounded-lg overflow-hidden">
+      <div className="relative w-full h-[60px] bg-gray-300 rounded-lg overflow-hidden">
         <div className="flex h-full">
           {thumbnails.map((thumbnail, index) => (
             <div key={index} className="relative flex-1 h-full min-w-0" onClick={() => handleThumbnailClick(index)}>
