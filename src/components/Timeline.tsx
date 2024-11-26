@@ -45,7 +45,7 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
     const video = videoRef.current!;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
-    const numberOfThumbnails = 6;
+    const numberOfThumbnails = 10;
 
     const thumbnailHeight = 120;
     const thumbnailWidth = (video.videoWidth / video.videoHeight) * thumbnailHeight;
@@ -90,20 +90,25 @@ const Timeline: React.FC<TimelineProps> = ({ videoRef, onSeek, onThumbnailsGener
     generateAllThumbnails();
   };
 
-  const handleThumbnailClick = (index: number) => {
-    const video = videoRef.current!;
-    const timeToSeek = (duration / thumbnails.length) * index;
-    video.currentTime = timeToSeek;
+  const handleThumbnailClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = e.currentTarget.parentElement;
+    if (!container || !duration) return;
+
+    const clickX = e.clientX - container.getBoundingClientRect().left;
+    const percentageClicked = clickX / container.offsetWidth;
+    const timeToSeek = duration * percentageClicked;
+
+    videoRef.current!.currentTime = timeToSeek;
     onSeek(timeToSeek);
   };
 
   return (
     <div className="w-[640px] space-y-2 m-auto">
       {/* Container dos thumbnails */}
-      <div className="relative w-full h-[60px] bg-gray-300 rounded-lg overflow-hidden">
+      <div className="relative w-full h-[50px] bg-gray-300 rounded-lg overflow-hidden">
         <div className="flex h-full">
           {thumbnails.map((thumbnail, index) => (
-            <div key={index} className="relative flex-1 h-full min-w-0" onClick={() => handleThumbnailClick(index)}>
+            <div key={index} className="relative flex-1 h-full min-w-0" onClick={handleThumbnailClick}>
               <img
                 src={thumbnail}
                 alt={`Thumbnail ${index + 1}`}
