@@ -1,15 +1,16 @@
-import React from 'react';
-import { Marker } from '../types/marker';
+import React, { useState } from 'react';
+import { Marker, ReferenceGuideState } from '../types';
 import { Slider } from 'primereact/slider';
 import { InputNumber } from 'primereact/inputnumber';
 import { rgbToHex, hexToRgb } from '../utils/colors';
 import type { RGBColor } from '../types/api';
 
-export interface ConfigPanelProps {
-  marker: Marker | null;
-  updateMarker: (updatedMarker: Marker) => void;
+interface ConfigPanelProps {
+  marker: Marker;
+  updateMarker: (marker: Marker) => void;
   deleteMarker: (id: string) => void;
   className?: string;
+  onReferenceGuideChange?: (state: ReferenceGuideState) => void;
 }
 
 interface OpenCVParams {
@@ -26,7 +27,13 @@ interface OpenCVParams {
 
 type OpenCVParamKey = keyof OpenCVParams;
 
-const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteMarker, className }) => {
+export function ConfigPanel({
+  marker,
+  updateMarker,
+  deleteMarker,
+  className,
+  onReferenceGuideChange,
+}: ConfigPanelProps) {
   if (!marker) {
     return (
       <div className="config-panel">
@@ -94,6 +101,46 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
     });
   };
 
+  const handleReferenceGuideClick = (type: 'minArea' | 'maxArea') => {
+    onReferenceGuideChange?.({
+      isActive: true,
+      type,
+    });
+  };
+
+  const renderAreaInput = (label: string, param: 'minArea' | 'maxArea', value: number, inputId: string) => (
+    <div className="flex items-center gap-2">
+      <div className="flex-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
+          {label}:
+        </label>
+        <input
+          id={inputId}
+          type="number"
+          value={value}
+          onChange={(e) => handleParamChange(param, e.target.value)}
+          className="w-full rounded-md"
+          aria-label={label}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => handleReferenceGuideClick(param)}
+        className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+        aria-label={`Usar gabarito de referência para ${label}`}
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+
   const renderColorSegmentationParams = () => {
     return (
       <div className="color-segmentation-params space-y-4">
@@ -134,30 +181,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
             className="w-full rounded-md"
           />
         </div>
-        <div className="space-y-2">
-          <label htmlFor="minArea" className="block text-sm font-medium text-gray-700">
-            Área Mínima:
-          </label>
-          <input
-            type="number"
-            id="minArea"
-            value={(marker.opencvParams?.minArea || 100).toString()}
-            onChange={(e) => handleParamChange('minArea', e.target.value)}
-            className="w-full rounded-md"
-          />
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="maxArea" className="block text-sm font-medium text-gray-700">
-            Área Máxima:
-          </label>
-          <input
-            type="number"
-            id="maxArea"
-            value={(marker.opencvParams?.maxArea || 10000).toString()}
-            onChange={(e) => handleParamChange('maxArea', e.target.value)}
-            className="w-full rounded-md"
-          />
-        </div>
+        {renderAreaInput('Área Mínima', 'minArea', marker.opencvParams?.minArea || 100, 'minArea')}
+        {renderAreaInput('Área Máxima', 'maxArea', marker.opencvParams?.maxArea || 10000, 'maxArea')}
       </div>
     );
   };
@@ -404,6 +429,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
       )}
     </div>
   );
-};
+}
 
 export default ConfigPanel;

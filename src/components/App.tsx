@@ -3,7 +3,7 @@ import Sidebar from './Sidebar';
 import VideoPlayer from './VideoPlayer';
 import Timeline from './Timeline';
 import ConfigPanel from './ConfigPanel';
-import { Marker } from '../types/marker';
+import { Marker, ReferenceGuideState } from '../types/marker';
 import '../styles/global.css';
 import 'primereact/resources/themes/saga-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
@@ -94,6 +94,11 @@ const App: React.FC = () => {
   const [isDebugEnabled, setIsDebugEnabled] = useState(false);
 
   const [lastSentMessages] = useState(new Map());
+
+  const [referenceGuide, setReferenceGuide] = useState<ReferenceGuideState>({
+    isActive: false,
+    type: null,
+  });
 
   useEffect(() => {
     const savedPosition = localStorage.getItem('videoPosition');
@@ -461,6 +466,24 @@ const App: React.FC = () => {
   // Adicionar este seletor para obter o marcador selecionado
   const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
 
+  const handleReferenceGuideComplete = (area: number) => {
+    if (!selectedMarkerId) return;
+
+    const marker = markers.find((m) => m.id === selectedMarkerId);
+    if (!marker?.opencvParams) return;
+
+    const updatedMarker = {
+      ...marker,
+      opencvParams: {
+        ...marker.opencvParams,
+        [referenceGuide.type!]: Math.round(area),
+      },
+    };
+
+    updateMarker(updatedMarker);
+    setReferenceGuide({ isActive: false, type: null });
+  };
+
   return (
     <SyncContext.Provider value={{ lastSentMessages }}>
       <div className="min-h-screen bg-gray-800">
@@ -560,6 +583,11 @@ const App: React.FC = () => {
                   onFpsChange={setFps}
                   isDebugEnabled={isDebugEnabled}
                   onDebugChange={setIsDebugEnabled}
+                  referenceGuide={{
+                    isActive: referenceGuide.isActive,
+                    type: referenceGuide.type,
+                    onComplete: handleReferenceGuideComplete,
+                  }}
                 />
               </div>
 
@@ -579,6 +607,7 @@ const App: React.FC = () => {
             updateMarker={updateMarker}
             deleteMarker={deleteMarker}
             className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"
+            onReferenceGuideChange={setReferenceGuide}
           />
         </div>
         {isLoading && <Loading />}

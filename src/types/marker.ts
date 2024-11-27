@@ -23,3 +23,8 @@ export interface Marker {
     // Add any other parameters that might be used
   };
 }
+
+export interface ReferenceGuideState {
+  isActive: boolean;
+  type: 'minArea' | 'maxArea' | null;
+}

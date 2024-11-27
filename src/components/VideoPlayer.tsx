@@ -25,6 +25,11 @@ interface VideoPlayerProps {
   onFpsChange: (fps: number) => void;
   isDebugEnabled?: boolean;
   onDebugChange: (enabled: boolean) => void;
+  referenceGuide?: {
+    isActive: boolean;
+    type: 'minArea' | 'maxArea' | null;
+    onComplete: (area: number) => void;
+  };
 }
 
 interface WebSocketBoundingBox {
@@ -48,6 +53,7 @@ export function VideoPlayer({
   onProcessVideo,
   onFpsChange,
   isDebugEnabled = false,
+  referenceGuide,
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -256,11 +262,23 @@ export function VideoPlayer({
         }
       });
 
-      // Adicionar desenho do retângulo temporário
+      // Desenhar retângulo de referência
       if (isDrawing && currentRect) {
-        ctx.strokeStyle = '#00ff00'; // ou use a cor que preferir
+        ctx.strokeStyle = referenceGuide?.isActive ? '#00ff00' : '#ffffff';
         ctx.lineWidth = 2;
+
+        if (referenceGuide?.isActive) {
+          ctx.setLineDash([5, 5]);
+
+          // Mostrar área em tempo real
+          const area = Math.abs(currentRect.width * currentRect.height);
+          ctx.font = '14px Arial';
+          ctx.fillStyle = '#00ff00';
+          ctx.fillText(`Área: ${Math.round(area)}px²`, currentRect.x, currentRect.y - 5);
+        }
+
         ctx.strokeRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
+        ctx.setLineDash([]);
       }
     },
     [
@@ -273,6 +291,7 @@ export function VideoPlayer({
       videoRef,
       isDrawing,
       currentRect,
+      referenceGuide,
     ]
   );
 
@@ -372,7 +391,18 @@ export function VideoPlayer({
   );
 
   const handleMouseUp = useCallback(() => {
-    if (!isDrawing || !startPoint || !currentRect) return;
+    if (!isDrawing || !startPoint || !currentRect) {
+      return;
+    }
+
+    if (referenceGuide?.isActive) {
+      const area = Math.abs(currentRect.width * currentRect.height);
+      referenceGuide.onComplete(area);
+      setIsDrawing(false);
+      setStartPoint(null);
+      setCurrentRect(null);
+      return;
+    }
 
     const newMarkerCount = markerCount + 1;
     const newMarker: Marker = {
@@ -396,7 +426,7 @@ export function VideoPlayer({
     setIsDrawing(false);
     setStartPoint(null);
     setCurrentRect(null);
-  }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor]);
+  }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor, referenceGuide]);
 
   // Adicionar useEffect para monitorar mudanças nas props
   useEffect(() => {}, [markers, selectedMarkerId, processingResults]);
