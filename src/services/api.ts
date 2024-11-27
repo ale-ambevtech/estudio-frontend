@@ -9,11 +9,14 @@ if (!API_BASE_URL) {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 export async function uploadVideo(file: File): Promise<VideoMetadata> {
   try {
-    console.log('Uploading video file:', file.name);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -23,7 +26,6 @@ export async function uploadVideo(file: File): Promise<VideoMetadata> {
       },
     });
 
-    console.log('Upload successful:', response.data);
     return response.data;
   } catch (error) {
     console.error('Upload failed:', error);
