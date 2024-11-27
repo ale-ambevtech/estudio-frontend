@@ -375,10 +375,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ marker, updateMarker, deleteM
               aria-label="Função OpenCV"
             >
               <option value="">Selecionar</option>
-              <option value="detectShapes">Detecção de Formas</option>
+              {/* <option value="detectShapes">Detecção de Formas</option> */}
               <option value="colorSegmentation">Segmentação de Cor</option>
-              <option value="templateMatching">Correspondência de Modelo</option>
-              <option value="detectPeople">Detecção de Pessoas</option>
+              {/* <option value="templateMatching">Correspondência de Modelo</option> */}
+              {/* <option value="detectPeople">Detecção de Pessoas</option> */}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
               <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
