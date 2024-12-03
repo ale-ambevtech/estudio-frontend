@@ -52,11 +52,11 @@ export async function processVideo(request: ProcessVideoRequest): Promise<unknow
   }
 }
 
-export async function checkVideoMirror(): Promise<VideoMetadata> {
+export async function checkVideoMirror(): Promise<VideoMetadata | null> {
   try {
     const response = await api.get<VideoMetadata>('/video', {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
     });
 
