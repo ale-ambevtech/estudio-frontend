@@ -10,7 +10,7 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 import { VideoControls } from './VideoControls';
-import { processVideo, uploadVideo } from '../services/api';
+import { checkVideoMirror, processVideo, uploadVideo } from '../services/api';
 import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult } from '../types/api';
 import { Loading } from './Loading';
 import { createDefaultMarker } from '../utils/marker-utils';
@@ -269,7 +269,7 @@ const App: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await uploadVideo(file);
+      const res = await uploadVideo(file);
 
       if (mediaUrl) {
         URL.revokeObjectURL(mediaUrl);
@@ -281,8 +281,8 @@ const App: React.FC = () => {
       const type = file.type.startsWith('video/') ? 'video' : 'image';
       setMediaType(type);
 
-      localStorage.setItem('mediaType', type);
-      await saveMedia('currentMedia', file);
+      localStorage.setItem('mediaInfo', JSON.stringify({ type: type, name: file.name, id: res.id }));
+      await saveMedia(`currentMedia-${res.id}`, file);
     } catch (error) {
       console.error('Error uploading media:', error);
     } finally {
@@ -394,13 +394,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadSavedMedia = async () => {
       try {
-        const savedType = localStorage.getItem('mediaType');
-        if (savedType) {
-          const savedMedia = await getMedia('currentMedia');
+        const savedMediaInfo: { type: string; name: string; id: string } = JSON.parse(
+          localStorage.getItem('mediaInfo') ?? '{}'
+        );
+        const res = await checkVideoMirror();
+
+        if (savedMediaInfo.id && res && res.id === savedMediaInfo.id) {
+          const savedMedia = await getMedia(`currentMedia-${savedMediaInfo.id}`);
           if (savedMedia) {
             const url = URL.createObjectURL(savedMedia);
             setMediaUrl(url);
-            setMediaType(savedType as 'video' | 'image');
+            setMediaType(savedMediaInfo.type as 'video' | 'image');
           }
         }
       } catch (error) {
