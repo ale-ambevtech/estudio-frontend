@@ -293,6 +293,12 @@ const App: React.FC = () => {
   const handleProcessVideo = async () => {
     if (!videoRef.current) return;
 
+    const checkedVideo = await checKMirrorAndStorageVideo();
+    if (!checkedVideo.isSameVideo) {
+      resetAll();
+      return;
+    }
+
     // Processa todos os marcadores que têm função OpenCV configurada, incluindo o quadro geral
     const markersToProcess = markers.filter((marker) => marker.opencvFunction && marker.opencvParams);
 
@@ -391,24 +397,31 @@ const App: React.FC = () => {
     }
   };
 
+  const checKMirrorAndStorageVideo = async () => {
+    const savedMediaInfo: { type: string; name: string; id: string } = JSON.parse(
+      localStorage.getItem('mediaInfo') ?? '{}'
+    );
+    const res = await checkVideoMirror();
+    const isSameVideo = savedMediaInfo.id !== '' && res !== null && res.id === savedMediaInfo.id;
+
+    return { isSameVideo, videoInfo: savedMediaInfo };
+  };
+
   useEffect(() => {
     const loadSavedMedia = async () => {
-      try {
-        const savedMediaInfo: { type: string; name: string; id: string } = JSON.parse(
-          localStorage.getItem('mediaInfo') ?? '{}'
-        );
-        const res = await checkVideoMirror();
+      const checkedVideo = await checKMirrorAndStorageVideo();
 
-        if (savedMediaInfo.id && res && res.id === savedMediaInfo.id) {
-          const savedMedia = await getMedia(`currentMedia-${savedMediaInfo.id}`);
-          if (savedMedia) {
-            const url = URL.createObjectURL(savedMedia);
-            setMediaUrl(url);
-            setMediaType(savedMediaInfo.type as 'video' | 'image');
-          }
+      if (checkedVideo.isSameVideo) {
+        const savedMedia = await getMedia(`currentMedia-${checkedVideo.videoInfo.id}`);
+        if (savedMedia) {
+          const url = URL.createObjectURL(savedMedia);
+          setMediaUrl(url);
+          setMediaType(checkedVideo.videoInfo.type as 'video' | 'image');
+        } else {
+          resetAll();
         }
-      } catch (error) {
-        console.error('Error loading saved media:', error);
+      } else {
+        resetAll();
       }
     };
 
@@ -435,10 +448,11 @@ const App: React.FC = () => {
     if (mediaUrl) {
       URL.revokeObjectURL(mediaUrl);
     }
+    const idMedia = localStorage.getItem('mediaInfo') ?? '';
     setMediaUrl(null);
     setMediaType(null);
-    localStorage.removeItem('mediaType');
-    await deleteMedia('currentMedia');
+    localStorage.removeItem('mediaInfo');
+    await deleteMedia(`currentMedia-${JSON.parse(idMedia).id}`);
     resetMarkers();
 
     // Clear the file input
