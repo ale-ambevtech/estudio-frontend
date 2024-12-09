@@ -10,7 +10,7 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 import { VideoControls } from './VideoControls';
-import { processVideo, uploadVideo } from '../services/api';
+import { checkVideoMirror, processVideo, uploadVideo } from '../services/api';
 import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult } from '../types/api';
 import { Loading } from './Loading';
 import { createDefaultMarker } from '../utils/marker-utils';
@@ -269,7 +269,7 @@ const App: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await uploadVideo(file);
+      const res = await uploadVideo(file);
 
       if (mediaUrl) {
         URL.revokeObjectURL(mediaUrl);
@@ -281,8 +281,8 @@ const App: React.FC = () => {
       const type = file.type.startsWith('video/') ? 'video' : 'image';
       setMediaType(type);
 
-      localStorage.setItem('mediaType', type);
-      await saveMedia('currentMedia', file);
+      localStorage.setItem('mediaInfo', JSON.stringify({ type: type, name: file.name, id: res.id }));
+      await saveMedia(`currentMedia-${res.id}`, file);
     } catch (error) {
       console.error('Error uploading media:', error);
     } finally {
@@ -292,6 +292,12 @@ const App: React.FC = () => {
 
   const handleProcessVideo = async () => {
     if (!videoRef.current) return;
+
+    const checkedVideo = await checKMirrorAndStorageVideo();
+    if (!checkedVideo.isSameVideo) {
+      resetAll();
+      return;
+    }
 
     // Processa todos os marcadores que têm função OpenCV configurada, incluindo o quadro geral
     const markersToProcess = markers.filter((marker) => marker.opencvFunction && marker.opencvParams);
@@ -391,20 +397,31 @@ const App: React.FC = () => {
     }
   };
 
+  const checKMirrorAndStorageVideo = async () => {
+    const savedMediaInfo: { type: string; name: string; id: string } = JSON.parse(
+      localStorage.getItem('mediaInfo') ?? '{}'
+    );
+    const res = await checkVideoMirror();
+    const isSameVideo = savedMediaInfo.id !== '' && res !== null && res.id === savedMediaInfo.id;
+
+    return { isSameVideo, videoInfo: savedMediaInfo };
+  };
+
   useEffect(() => {
     const loadSavedMedia = async () => {
-      try {
-        const savedType = localStorage.getItem('mediaType');
-        if (savedType) {
-          const savedMedia = await getMedia('currentMedia');
-          if (savedMedia) {
-            const url = URL.createObjectURL(savedMedia);
-            setMediaUrl(url);
-            setMediaType(savedType as 'video' | 'image');
-          }
+      const checkedVideo = await checKMirrorAndStorageVideo();
+
+      if (checkedVideo.isSameVideo) {
+        const savedMedia = await getMedia(`currentMedia-${checkedVideo.videoInfo.id}`);
+        if (savedMedia) {
+          const url = URL.createObjectURL(savedMedia);
+          setMediaUrl(url);
+          setMediaType(checkedVideo.videoInfo.type as 'video' | 'image');
+        } else {
+          resetAll();
         }
-      } catch (error) {
-        console.error('Error loading saved media:', error);
+      } else {
+        resetAll();
       }
     };
 
@@ -431,10 +448,11 @@ const App: React.FC = () => {
     if (mediaUrl) {
       URL.revokeObjectURL(mediaUrl);
     }
+    const idMedia = localStorage.getItem('mediaInfo') ?? '';
     setMediaUrl(null);
     setMediaType(null);
-    localStorage.removeItem('mediaType');
-    await deleteMedia('currentMedia');
+    localStorage.removeItem('mediaInfo');
+    await deleteMedia(`currentMedia-${JSON.parse(idMedia).id}`);
     resetMarkers();
 
     // Clear the file input
