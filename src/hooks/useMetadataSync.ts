@@ -18,8 +18,6 @@ interface UseMetadataSyncProps {
   isDebugEnabled: boolean;
 }
 
-
-
 export function useMetadataSync({
   isPlaying,
   videoRef,
@@ -33,7 +31,7 @@ export function useMetadataSync({
   const lastProcessedTimeRef = useRef<number>(0);
   const isConnectedRef = useRef<boolean>(false);
 
-  const cleanupWebSocket = useCallback(() => {
+  const cleanupWebSocketConnection = useCallback(() => {
     isConnectedRef.current = false;
     if (wsRef.current) {
       wsRef.current.onclose = null;
@@ -48,11 +46,11 @@ export function useMetadataSync({
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const establishWebSocketConnection = useCallback(() => {
     if (!isSyncEnabled || wsRef.current) return;
 
     try {
-      cleanupWebSocket();
+      cleanupWebSocketConnection();
       isDebugEnabled && console.log('Connecting to WebSocket...');
       
       wsRef.current = new WebSocket(WS_URL);
@@ -67,9 +65,9 @@ export function useMetadataSync({
         isConnectedRef.current = false;
         if (isSyncEnabled && !event.wasClean) {
           wsRef.current = null;
-          reconnectTimeoutRef.current = setTimeout(connect, 3000);
+          reconnectTimeoutRef.current = setTimeout(establishWebSocketConnection, 3000);
         } else {
-          cleanupWebSocket();
+          cleanupWebSocketConnection();
         }
       };
 
@@ -92,39 +90,38 @@ export function useMetadataSync({
     } catch (error) {
       console.error('WebSocket connection error:', error);
       isConnectedRef.current = false;
-      cleanupWebSocket();
+      cleanupWebSocketConnection();
     }
-  }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocket, isDebugEnabled]);
+  }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocketConnection, isDebugEnabled]);
 
   useEffect(() => {
     if (isSyncEnabled) {
-      connect();
+      establishWebSocketConnection();
     } else {
-      cleanupWebSocket();
+      cleanupWebSocketConnection();
     }
 
-    return cleanupWebSocket;
-  }, [isSyncEnabled, connect, cleanupWebSocket]);
+    return cleanupWebSocketConnection;
+  }, [isSyncEnabled, establishWebSocketConnection, cleanupWebSocketConnection]);
 
-  const sendVideoTime = useCallback(() => {
+  const sendMetadata = useCallback(() => {
     if (!wsRef.current || !isConnectedRef.current || !videoRef.current) return;
 
-    const currentTime = Math.floor(videoRef.current.currentTime * 1000);
-    if (currentTime === lastProcessedTimeRef.current) return;
+    const currentTimeInMilliseconds = Math.floor(videoRef.current.currentTime * 1000);
+    if (currentTimeInMilliseconds === lastProcessedTimeRef.current) return;
 
-    // Processa todos os marcadores que têm função OpenCV configurada
-    const markersToProcess = markers.filter(marker => 
+    const markersWithOpenCVFunction = markers.filter(marker => 
       marker.opencvFunction && marker.opencvParams
     );
 
-    markersToProcess.forEach(marker => {
+    markersWithOpenCVFunction.forEach(marker => {
       const pdiFunction = createPDIFunction(marker);
       if (!pdiFunction) return;
 
       try {
         const message = {
           marker_id: marker.id,
-          timestamp: currentTime,
+          timestamp: currentTimeInMilliseconds,
           pdi_functions: [pdiFunction],
           roi: {
             position: {
@@ -145,51 +142,46 @@ export function useMetadataSync({
       }
     });
 
-    lastProcessedTimeRef.current = currentTime;
+    lastProcessedTimeRef.current = currentTimeInMilliseconds;
   }, [markers, isDebugEnabled]);
 
-  // Função para processar mudanças no tempo do vídeo
-  const handleTimeUpdate = useCallback(() => {
+  const updateMetadataOnTimeChange = useCallback(() => {
     if (!isSyncEnabled || !wsRef.current || !isConnectedRef.current) return;
-    sendVideoTime();
-  }, [isSyncEnabled, sendVideoTime]);
+    sendMetadata();
+  }, [isSyncEnabled, sendMetadata]);
 
-  // Efeito para lidar com o intervalo durante a reprodução
   useEffect(() => {
     if (isPlaying && isSyncEnabled) {
-      const intervalId = setInterval(handleTimeUpdate, 33); // ~30fps
+      const intervalId = setInterval(updateMetadataOnTimeChange, 33); // ~30fps
       return () => clearInterval(intervalId);
     }
-  }, [isPlaying, isSyncEnabled, handleTimeUpdate]);
+  }, [isPlaying, isSyncEnabled, updateMetadataOnTimeChange]);
 
-  // Efeito para lidar com eventos de seeking e timeupdate
   useEffect(() => {
     if (!videoRef.current || !isSyncEnabled) return;
 
-    const video = videoRef.current;
+    const videoElement = videoRef.current;
     
-    // Processa imediatamente após um seek
-    const handleSeek = () => {
+    const handleSeekEvent = () => {
       console.log('Seek detected, sending time update');
-      handleTimeUpdate();
+      updateMetadataOnTimeChange();
     };
 
-    // Processa quando o tempo é atualizado (inclui play/pause e seeking)
-    const handleVideoTimeUpdate = () => {
-      if (!isPlaying) { // Só processa se não estiver em reprodução
+    const handleTimeUpdateEvent = () => {
+      if (!isPlaying) {
         console.log('Time updated while paused, sending update');
-        handleTimeUpdate();
+        updateMetadataOnTimeChange();
       }
     };
 
-    video.addEventListener('seeked', handleSeek);
-    video.addEventListener('timeupdate', handleVideoTimeUpdate);
+    videoElement.addEventListener('seeked', handleSeekEvent);
+    videoElement.addEventListener('timeupdate', handleTimeUpdateEvent);
 
     return () => {
-      video.removeEventListener('seeked', handleSeek);
-      video.removeEventListener('timeupdate', handleVideoTimeUpdate);
+      videoElement.removeEventListener('seeked', handleSeekEvent);
+      videoElement.removeEventListener('timeupdate', handleTimeUpdateEvent);
     };
-  }, [videoRef, isSyncEnabled, isPlaying, handleTimeUpdate, isDebugEnabled]);
+  }, [videoRef, isSyncEnabled, isPlaying, updateMetadataOnTimeChange, isDebugEnabled]);
 
   return { isConnected: isConnectedRef.current };
 } 
