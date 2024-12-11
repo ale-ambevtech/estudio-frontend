@@ -10,11 +10,12 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { saveMedia, getMedia, deleteMedia } from '../services/mediaStorage';
 import { VideoControls } from './VideoControls';
-import { checkVideoMirror, processVideo, uploadVideo } from '../services/api';
+import { processVideo, uploadVideo } from '../services/api';
 import { OPENCV_FUNCTIONS, OUTPUT_TYPES, ProcessVideoRequest, ProcessingResult } from '../types/api';
 import { Loading } from './Loading';
 import { createDefaultMarker } from '../utils/marker-utils';
 import { SyncContext } from '../contexts/SyncContext';
+import { checKMirrorAndStorageVideo } from '@/utils/checkVideo';
 
 interface VideoDimensions {
   width: number;
@@ -395,16 +396,6 @@ const App: React.FC = () => {
         console.error('Error processing marker:', marker.id, error);
       }
     }
-  };
-
-  const checKMirrorAndStorageVideo = async () => {
-    const savedMediaInfo: { type: string; name: string; id: string } = JSON.parse(
-      localStorage.getItem('mediaInfo') ?? '{}'
-    );
-    const res = await checkVideoMirror();
-    const isSameVideo = savedMediaInfo.id !== '' && res !== null && res.id === savedMediaInfo.id;
-
-    return { isSameVideo, videoInfo: savedMediaInfo };
   };
 
   useEffect(() => {

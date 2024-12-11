@@ -109,6 +109,12 @@ export function useMetadataSync({
   const sendVideoTime = useCallback(() => {
     if (!wsRef.current || !isConnectedRef.current || !videoRef.current) return;
 
+    const res = await checKMirrorAndStorageVideo();
+    if (!res.isSameVideo) {
+      console.error('O espelhamento de video não corresponde ao mesmo id.');
+      return;
+    }
+
     const currentTime = Math.floor(videoRef.current.currentTime * 1000);
     if (currentTime === lastProcessedTimeRef.current) return;
 
