@@ -439,7 +439,7 @@ const App: React.FC = () => {
     if (mediaUrl) {
       URL.revokeObjectURL(mediaUrl);
     }
-    const idMedia = localStorage.getItem('mediaInfo') ?? '';
+    const idMedia = localStorage.getItem('mediaInfo') ?? '{}';
     setMediaUrl(null);
     setMediaType(null);
     localStorage.removeItem('mediaInfo');
