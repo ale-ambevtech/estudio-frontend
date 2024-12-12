@@ -87,6 +87,7 @@ const App: React.FC = () => {
 
   const [fps, setFps] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAvalibleToMark, setIsAvalibleToMark] = useState(false);
 
   const [processingResults, setProcessingResults] = useState<Map<string, BoundingBoxResult[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
@@ -143,22 +144,26 @@ const App: React.FC = () => {
     }
   }, [saveVideoPosition]);
 
-  const addMarker = useCallback((marker: Marker) => {
-    setMarkers((prevMarkers) => {
-      const generalMarker = prevMarkers[0];
-      const newMarkers = [...prevMarkers.slice(1), marker];
-      console.log('Adding new marker:', marker);
-      return [generalMarker, ...newMarkers];
-    });
-    // Seleciona automaticamente o novo marcador
-    setSelectedMarkerId(marker.id);
-    // Garante que o novo marcador não tenha resultados
-    setProcessingResults((prev) => {
-      const newMap = new Map(prev);
-      newMap.delete(marker.id);
-      return newMap;
-    });
-  }, []);
+  const addMarker = useCallback(
+    (marker: Marker) => {
+      if (!isAvalibleToMark) return;
+      setMarkers((prevMarkers) => {
+        const generalMarker = prevMarkers[0];
+        const newMarkers = [...prevMarkers.slice(1), marker];
+        console.log('Adding new marker:', marker);
+        return [generalMarker, ...newMarkers];
+      });
+      // Seleciona automaticamente o novo marcador
+      setSelectedMarkerId(marker.id);
+      // Garante que o novo marcador não tenha resultados
+      setProcessingResults((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(marker.id);
+        return newMap;
+      });
+    },
+    [isAvalibleToMark]
+  );
 
   const selectMarker = useCallback((id: string) => {
     setSelectedMarkerId(id);
@@ -508,6 +513,7 @@ const App: React.FC = () => {
           {/* Sidebar Esquerda */}
           <Sidebar
             markers={markers}
+            onAddMarker={setIsAvalibleToMark}
             selectMarker={selectMarker}
             selectedMarkerId={selectedMarkerId}
             updateMarker={updateMarker}
@@ -585,7 +591,9 @@ const App: React.FC = () => {
               <div className="relative">
                 <VideoPlayer
                   markers={markers}
+                  isAvalibleToMark={isAvalibleToMark}
                   addMarker={addMarker}
+                  onFinishMark={setIsAvalibleToMark}
                   selectedMarkerId={selectedMarkerId}
                   videoRef={videoRef}
                   onDimensionsChange={handleVideoDimensionsChange}
@@ -621,6 +629,7 @@ const App: React.FC = () => {
           {/* Sidebar Direita */}
           <ConfigPanel
             marker={selectedMarker}
+            onSelectSizeMarker={setIsAvalibleToMark}
             updateMarker={updateMarker}
             deleteMarker={deleteMarker}
             className="panel rounded-lg shadow-sm p-4 h-[calc(100vh-2rem)] overflow-y-auto"

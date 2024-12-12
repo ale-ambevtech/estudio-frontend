@@ -83,6 +83,10 @@
   border: 1px solid #ccc;
 }
 
+.cursor-marker {
+  cursor: crosshair;
+}
+
 .controls {
   display: flex;
   justify-content: center;

@@ -10,6 +10,7 @@ import { useSyncContext } from '../contexts/SyncContext';
 
 interface VideoPlayerProps {
   markers: Marker[];
+  isAvalibleToMark: boolean;
   addMarker: (marker: Marker) => void;
   selectedMarkerId: string | null;
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -20,6 +21,7 @@ interface VideoPlayerProps {
   processingResults: Map<string, BoundingBoxResult[]>;
   isSyncEnabled: boolean;
   onSyncChange: (enabled: boolean) => void;
+  onFinishMark: (enabled: boolean) => void;
   onProcessVideo: () => void;
   fps: number;
   onFpsChange: (fps: number) => void;
@@ -41,7 +43,9 @@ interface WebSocketBoundingBox {
 
 export function VideoPlayer({
   markers,
+  isAvalibleToMark,
   addMarker,
+  onFinishMark,
   videoRef,
   selectedMarkerId,
   onDimensionsChange,
@@ -366,6 +370,7 @@ export function VideoPlayer({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isAvalibleToMark) return;
     setIsDrawing(true);
     const { x, y } = getCanvasMousePosition(e);
     setStartPoint({ x, y });
@@ -403,6 +408,7 @@ export function VideoPlayer({
       setIsDrawing(false);
       setStartPoint(null);
       setCurrentRect(null);
+      onFinishMark(false);
       return;
     }
 
@@ -428,10 +434,8 @@ export function VideoPlayer({
     setIsDrawing(false);
     setStartPoint(null);
     setCurrentRect(null);
+    onFinishMark(false);
   }, [isDrawing, startPoint, currentRect, markerCount, addMarker, selectMarker, getNextColor, referenceGuide]);
-
-  // Adicionar useEffect para monitorar mudanças nas props
-  useEffect(() => {}, [markers, selectedMarkerId, processingResults]);
 
   return (
     <div className="relative">
@@ -441,7 +445,7 @@ export function VideoPlayer({
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
-          className="video-canvas"
+          className={`video-canvas ${isAvalibleToMark ? 'cursor-marker' : ''}`}
           width={canvasSize.width}
           height={canvasSize.height}
         />

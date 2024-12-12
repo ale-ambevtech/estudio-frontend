@@ -1,4 +1,5 @@
 import { Marker } from '../types/marker';
+import { FaPlus } from 'react-icons/fa6';
 
 interface SidebarProps {
   markers: Marker[];
@@ -8,6 +9,7 @@ interface SidebarProps {
   resetMarkers: () => void;
   resetAll: () => void;
   className?: string;
+  onAddMarker: (bol: boolean) => void;
 }
 
 function Sidebar({
@@ -18,6 +20,7 @@ function Sidebar({
   resetMarkers,
   resetAll,
   className,
+  onAddMarker,
 }: SidebarProps) {
   const handleMarkerClick = (marker: Marker) => {
     selectMarker(marker.id);
@@ -47,6 +50,32 @@ function Sidebar({
         ))}
       </ul>
       <div className="space-y-2">
+        <button
+          onClick={() => onAddMarker(true)}
+          className="w-full 
+          text-black 
+          font-semibold 
+          bg-transparent 
+          rounded-md 
+          border-black 
+          border-solid 
+          border-2 
+          rounded-lg 
+          px-4 
+          py-1
+          transition-colors 
+          duration-300 
+          ease-in-out 
+          hover:bg-yellow-100 hover:border-transparent
+          flex 
+          items-center 
+          justify-center 
+          gap-2
+          "
+        >
+          <FaPlus />
+          Adicionar marcador
+        </button>
         <button
           onClick={resetMarkers}
           className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"

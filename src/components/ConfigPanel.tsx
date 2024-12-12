@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Marker, ReferenceGuideState } from '../types';
 import { Slider } from 'primereact/slider';
 import { InputNumber } from 'primereact/inputnumber';
@@ -10,6 +10,7 @@ interface ConfigPanelProps {
   updateMarker: (marker: Marker) => void;
   deleteMarker: (id: string) => void;
   className?: string;
+  onSelectSizeMarker: (bol: boolean) => void;
   onReferenceGuideChange?: (state: ReferenceGuideState) => void;
 }
 
@@ -32,6 +33,7 @@ export function ConfigPanel({
   updateMarker,
   deleteMarker,
   className,
+  onSelectSizeMarker,
   onReferenceGuideChange,
 }: ConfigPanelProps) {
   if (!marker) {
@@ -102,6 +104,7 @@ export function ConfigPanel({
   };
 
   const handleReferenceGuideClick = (type: 'minArea' | 'maxArea') => {
+    onSelectSizeMarker(true);
     onReferenceGuideChange?.({
       isActive: true,
       type,
