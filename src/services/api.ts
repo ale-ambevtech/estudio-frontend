@@ -12,7 +12,7 @@ const api = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
 });
 
 export async function uploadVideo(file: File): Promise<VideoMetadata> {
@@ -39,7 +39,7 @@ export async function uploadVideo(file: File): Promise<VideoMetadata> {
 export async function processVideo(request: ProcessVideoRequest): Promise<unknown> {
   try {
     console.log('Processing video with request:', JSON.stringify(request, null, 2));
-    
+
     const response = await api.post('/process', request);
     console.log('Processing successful:', response.data);
     return response.data;
@@ -50,4 +50,22 @@ export async function processVideo(request: ProcessVideoRequest): Promise<unknow
     }
     throw error;
   }
-} 
+}
+
+export async function checkVideoMirror(): Promise<VideoMetadata | false> {
+  try {
+    const response = await api.get<VideoMetadata>('/video', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Upload failed:', error);
+    if (error instanceof AxiosError) {
+      console.error('Error details:', error.response?.data);
+    }
+    return false;
+  }
+}

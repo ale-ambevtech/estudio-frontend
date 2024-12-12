@@ -50,6 +50,7 @@ export function VideoPlayer({
   mediaUrl,
   processingResults,
   isSyncEnabled,
+  onSyncChange,
   onProcessVideo,
   onFpsChange,
   isDebugEnabled = false,
@@ -122,6 +123,7 @@ export function VideoPlayer({
     onMetadataUpdate,
     selectedMarkerId,
     isDebugEnabled,
+    onSyncChange,
   });
 
   const handleFpsCalculation = useCallback(() => {
