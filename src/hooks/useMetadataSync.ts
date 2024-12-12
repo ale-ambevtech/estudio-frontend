@@ -12,11 +12,12 @@ if (!WS_URL) {
 interface UseMetadataSyncProps {
   isPlaying: boolean;
   videoRef: React.RefObject<HTMLVideoElement>;
-  markers: Array<any>;
+  markers: any[];
   isSyncEnabled: boolean;
   onMetadataUpdate: (data: ServerMessage['data']) => void;
   selectedMarkerId: string | null;
   isDebugEnabled: boolean;
+  onSyncChange: (enabled: boolean) => void;
 }
 
 export function useMetadataSync({
@@ -25,7 +26,8 @@ export function useMetadataSync({
   markers,
   isSyncEnabled,
   onMetadataUpdate,
-  isDebugEnabled
+  isDebugEnabled,
+  onSyncChange,
 }: UseMetadataSyncProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
@@ -47,15 +49,21 @@ export function useMetadataSync({
     }
   }, []);
 
-  const establishWebSocketConnection = useCallback(() => {
+  const establishWebSocketConnection = useCallback(async () => {
     if (!isSyncEnabled || wsRef.current) return;
+    const res = await checKMirrorAndStorageVideo();
+
+    if (!res.isSameVideo) {
+      console.error('O espelhamento de video não corresponde ao mesmo id.');
+      return;
+    }
 
     try {
       cleanupWebSocketConnection();
       isDebugEnabled && console.log('Connecting to WebSocket...');
-      
+
       wsRef.current = new WebSocket(WS_URL);
-      
+
       wsRef.current.onopen = () => {
         isDebugEnabled && console.log('WebSocket connected successfully');
         isConnectedRef.current = true;
@@ -64,11 +72,13 @@ export function useMetadataSync({
       wsRef.current.onclose = (event) => {
         isDebugEnabled && console.log('WebSocket closed:', event);
         isConnectedRef.current = false;
-        if (isSyncEnabled && !event.wasClean) {
+        const isUnintentionalDisconnection = !event.wasClean;
+        if (isSyncEnabled && isUnintentionalDisconnection) {
           wsRef.current = null;
           reconnectTimeoutRef.current = setTimeout(establishWebSocketConnection, 3000);
         } else {
           cleanupWebSocketConnection();
+          onSyncChange(false);
         }
       };
 
@@ -87,11 +97,14 @@ export function useMetadataSync({
 
       wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error);
+        cleanupWebSocketConnection();
+        onSyncChange(false);
       };
     } catch (error) {
       console.error('WebSocket connection error:', error);
       isConnectedRef.current = false;
       cleanupWebSocketConnection();
+      onSyncChange(false);
     }
   }, [isSyncEnabled, onMetadataUpdate, cleanupWebSocketConnection, isDebugEnabled]);
 
@@ -105,23 +118,15 @@ export function useMetadataSync({
     return cleanupWebSocketConnection;
   }, [isSyncEnabled, establishWebSocketConnection, cleanupWebSocketConnection]);
 
-  const sendMetadata = useCallback(async () => {
+  const sendMetadata = useCallback(() => {
     if (!wsRef.current || !isConnectedRef.current || !videoRef.current) return;
-
-    const res = await checKMirrorAndStorageVideo();
-    if (!res.isSameVideo) {
-      console.error('O espelhamento de video não corresponde ao mesmo id.');
-      return;
-    }
 
     const currentTimeInMilliseconds = Math.floor(videoRef.current.currentTime * 1000);
     if (currentTimeInMilliseconds === lastProcessedTimeRef.current) return;
 
-    const markersWithOpenCVFunction = markers.filter(marker => 
-      marker.opencvFunction && marker.opencvParams
-    );
+    const markersWithOpenCVFunction = markers.filter((marker) => marker.opencvFunction && marker.opencvParams);
 
-    markersWithOpenCVFunction.forEach(marker => {
+    markersWithOpenCVFunction.forEach((marker) => {
       const pdiFunction = createPDIFunction(marker);
       if (!pdiFunction) return;
 
@@ -133,13 +138,13 @@ export function useMetadataSync({
           roi: {
             position: {
               x: Math.round(marker.x),
-              y: Math.round(marker.y)
+              y: Math.round(marker.y),
             },
             size: {
               width: Math.round(marker.width),
-              height: Math.round(marker.height)
-            }
-          }
+              height: Math.round(marker.height),
+            },
+          },
         };
 
         wsRef.current?.send(JSON.stringify(message));
@@ -168,7 +173,7 @@ export function useMetadataSync({
     if (!videoRef.current || !isSyncEnabled) return;
 
     const videoElement = videoRef.current;
-    
+
     const handleSeekEvent = () => {
       console.log('Seek detected, sending time update');
       updateMetadataOnTimeChange();
@@ -191,4 +196,4 @@ export function useMetadataSync({
   }, [videoRef, isSyncEnabled, isPlaying, updateMetadataOnTimeChange, isDebugEnabled]);
 
   return { isConnected: isConnectedRef.current };
-} 
+}

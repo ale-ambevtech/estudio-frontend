@@ -52,7 +52,7 @@ export async function processVideo(request: ProcessVideoRequest): Promise<unknow
   }
 }
 
-export async function checkVideoMirror(): Promise<VideoMetadata | null> {
+export async function checkVideoMirror(): Promise<VideoMetadata | false> {
   try {
     const response = await api.get<VideoMetadata>('/video', {
       headers: {
@@ -66,6 +66,6 @@ export async function checkVideoMirror(): Promise<VideoMetadata | null> {
     if (error instanceof AxiosError) {
       console.error('Error details:', error.response?.data);
     }
-    throw error;
+    return false;
   }
 }

@@ -110,6 +110,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log('Current markers:', markers);
     try {
       console.log('Saving markers to localStorage:', markers);
       localStorage.setItem('markers', JSON.stringify(markers));
@@ -206,10 +207,6 @@ const App: React.FC = () => {
       console.warn('Attempted to delete general marker, which is not allowed');
     }
   }, []);
-
-  useEffect(() => {
-    console.log('Current markers:', markers);
-  }, [markers]);
 
   const handleSeek = (time: number) => {
     if (videoRef.current) {
@@ -471,6 +468,17 @@ const App: React.FC = () => {
       video.removeEventListener('ended', handleEnded);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isSyncEnabled) {
+      (async () => {
+        const res = await checKMirrorAndStorageVideo();
+        if (!res.isSameVideo) {
+          resetAll();
+        }
+      })();
+    }
+  }, [isSyncEnabled]);
 
   // Adicionar este seletor para obter o marcador selecionado
   const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) || markers[0];
