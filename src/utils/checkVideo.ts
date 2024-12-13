@@ -5,7 +5,7 @@ export const checKMirrorAndStorageVideo = async () => {
     localStorage.getItem('mediaInfo') ?? '{}'
   );
   const res = await checkVideoMirror();
-  const isSameVideo = savedMediaInfo.id !== '' && res !== null && res.id === savedMediaInfo.id;
+  const isSameVideo = savedMediaInfo.id !== '' && res && res.id === savedMediaInfo.id;
 
   return { isSameVideo, videoInfo: savedMediaInfo };
 };
