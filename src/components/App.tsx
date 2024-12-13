@@ -58,7 +58,7 @@ const App: React.FC = () => {
     return [createDefaultMarker(0, 0, 640, 480, 'Quadro Geral', '#ffc400', true, 'general')];
   });
 
-  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>('general');
   const videoRef = useRef<HTMLVideoElement>(null);
   const isInitializingRef = useRef(true);
   const savedPositionRef = useRef<number | null>(null);
